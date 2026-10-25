@@ -1,0 +1,9 @@
+<!doctype html><html><body style="margin:0;background:#222"><script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script><script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+const r=new THREE.WebGLRenderer({antialias:true});r.setSize(innerWidth,innerHeight);r.outputEncoding=THREE.sRGBEncoding;document.body.appendChild(r.domElement);
+const s=new THREE.Scene();s.background=new THREE.Color(0x2a2a30);const c=new THREE.PerspectiveCamera(35,innerWidth/innerHeight,0.05,50);
+s.add(new THREE.HemisphereLight(0xffffff,0x444455,1.0));const d=new THREE.DirectionalLight(0xffffff,1.6);d.position.set(2,4,3);s.add(d);
+window.ready=false;
+fetch('ritualist.glb').then(x=>x.arrayBuffer()).then(b=>new THREE.GLTFLoader().parse(b,'',g=>{window.M=g.scene;s.add(g.scene);window.B={};g.scene.traverse(o=>{if(o.isBone){B[o.name]=o;o.userData.rest=o.quaternion.clone();}});window.ready=true;}));
+window.shot=(pos,pose)=>{for(const k in B)B[k].quaternion.copy(B[k].userData.rest);for(const k in pose){const [x,y,z]=pose[k];B[k].quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(x,y,z)))};c.position.set(...pos);c.lookAt(0,0.95,0);r.render(s,c);};
+</script></body></html>
