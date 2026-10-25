@@ -1,0 +1,21 @@
+# Unity scenes and assets are text; merge them as text
+*.unity     text eol=lf
+*.prefab    text eol=lf
+*.asset     text eol=lf
+*.meta      text eol=lf
+*.mat       text eol=lf
+*.cs        text diff=csharp
+
+# Big binary art goes through Git LFS (GitHub Desktop handles this for you)
+EmberDrift/**/*.fbx filter=lfs diff=lfs merge=lfs -text
+EmberDrift/**/*.glb filter=lfs diff=lfs merge=lfs -text
+EmberDrift/**/*.obj filter=lfs diff=lfs merge=lfs -text
+EmberDrift/**/*.blend filter=lfs diff=lfs merge=lfs -text
+EmberDrift/**/*.psd filter=lfs diff=lfs merge=lfs -text
+EmberDrift/**/*.png filter=lfs diff=lfs merge=lfs -text
+EmberDrift/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+EmberDrift/**/*.tga filter=lfs diff=lfs merge=lfs -text
+EmberDrift/**/*.exr filter=lfs diff=lfs merge=lfs -text
+EmberDrift/**/*.wav filter=lfs diff=lfs merge=lfs -text
+EmberDrift/**/*.mp3 filter=lfs diff=lfs merge=lfs -text
+EmberDrift/**/*.ogg filter=lfs diff=lfs merge=lfs -text
