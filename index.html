@@ -3319,7 +3319,22 @@ try { const saved = localStorage.getItem('emberdrift.pad'); if (saved) { binds =
 function saveBinds(){ try { localStorage.setItem('emberdrift.pad', JSON.stringify(binds)); } catch (e) {} }
 
 const pad = { x: 0, y: 0, prev: {}, active: false, sprint: false, capture: null };
-const DEAD = 0.15;
+const DEAD = 0.2;
+// Cheap and non-standard pads often rest an axis off centre (stick drift, or a trigger reported as an axis at -1),
+// which reads as a constant push. Each axis is measured against its own resting value: taken when the pad first
+// reports, and re-taken whenever an axis sits perfectly still near centre for a couple of seconds.
+const axisRest = { list: null, last: [], still: [] };
+function calibrate(g){ axisRest.list = g.axes.map(v => v); axisRest.last = g.axes.slice(); axisRest.still = g.axes.map(() => 0); }
+function trackRest(g, dt){
+  if (!axisRest.list || axisRest.list.length !== g.axes.length) calibrate(g);
+  g.axes.forEach((v, i) => {
+    axisRest.still[i] = Math.abs(v - axisRest.last[i]) < 0.008 ? axisRest.still[i] + dt : 0;
+    axisRest.last[i] = v;
+    const off = v - axisRest.list[i];
+    if (axisRest.still[i] > 2 && Math.abs(off) > 0.01 && Math.abs(v) < 0.55) axisRest.list[i] = v;
+  });
+}
+const axisVal = (g, i) => (g.axes[i] || 0) - (axisRest.list ? axisRest.list[i] || 0 : 0);
 function stick(v){ const a = Math.abs(v); if (a < DEAD) return 0; const n = (a - DEAD) / (1 - DEAD); return Math.sign(v) * n * n; }
 function getPad(){ const list = navigator.getGamepads ? navigator.getGamepads() : []; for (const g of list) if (g && g.connected) return g; return null; }
 const isPS = g => /playstation|dualsense|dualshock|054c|wireless controller/i.test(g.id);
@@ -3342,7 +3357,7 @@ function padStatusText(g){
     ? 'Controller connected · press ' + bindLabel(binds.jump, g) + ' to deploy'
     : 'Controller layout not recognized · open Controller setup to map your buttons';
 }
-addEventListener('gamepadconnected', () => { const g = getPad(); $('padStatus').hidden = false; $('padStatus').textContent = padStatusText(g); });
+addEventListener('gamepadconnected', () => { const g = getPad(); if (g) calibrate(g); $('padStatus').hidden = false; $('padStatus').textContent = padStatusText(g); });
 addEventListener('gamepaddisconnected', () => { if (!getPad()) { $('padStatus').hidden = true; pad.x = pad.y = 0; pad.active = false; firing = mouseFiring; adsHeld = mouseAds; } });
 
 // ---- remap flow ----
@@ -3436,6 +3451,7 @@ function pollPad(dt){
   const g = getPad();
   updateTester(g);
   if (!g) return;
+  trackRest(g, dt);
   if (pad.capture) { captureStep(g, dt); return; }
   const cur = {}; for (const a of ACTIONS) cur[a.id] = pressedBy(g, binds[a.id]);
   const tap = id => cur[id] && !pad.prev[id];
@@ -3445,7 +3461,7 @@ function pollPad(dt){
   else if (state === 'pause' && (tap('pause') || tap('jump'))) { resume(); show('touch', isTouch); }
   else if (state === 'gear' && (tap('gear') || tap('slide') || tap('pause'))) closeGear();
   else if (state === 'director') {
-    const nx = (g.buttons[15] && g.buttons[15].pressed ? 1 : 0) - (g.buttons[14] && g.buttons[14].pressed ? 1 : 0) || Math.round(stick((g.axes[binds.moveX.i] || 0) * binds.moveX.s));
+    const nx = (g.buttons[15] && g.buttons[15].pressed ? 1 : 0) - (g.buttons[14] && g.buttons[14].pressed ? 1 : 0) || Math.round(stick(axisVal(g, binds.moveX.i) * binds.moveX.s));
     if (nx && nx !== pad.nav) dirCycle(nx);
     pad.nav = nx;
     if (tap('slide') || tap('pause') || tap('map')) closeDirector();
@@ -3453,13 +3469,13 @@ function pollPad(dt){
     else if (tap('grenade')) dirTabCycle(-1); else if (tap('melee')) dirTabCycle(1);
   }
   else if (state === 'talk') {
-    const ny = (g.buttons[13] && g.buttons[13].pressed ? 1 : 0) - (g.buttons[12] && g.buttons[12].pressed ? 1 : 0) || Math.round(stick((g.axes[binds.moveY.i] || 0) * binds.moveY.s));
+    const ny = (g.buttons[13] && g.buttons[13].pressed ? 1 : 0) - (g.buttons[12] && g.buttons[12].pressed ? 1 : 0) || Math.round(stick(axisVal(g, binds.moveY.i) * binds.moveY.s));
     if (ny && ny !== pad.nav && talkOptsCur.length) { talkSel = (talkSel + ny + talkOptsCur.length) % talkOptsCur.length; markTalkSel(); }
     pad.nav = ny;
     if (tap('jump')) chooseTalk(talkSel); else if (tap('slide')) closeTalk();
   }
   else if (state === 'play') {
-    const ax = (bd) => stick((g.axes[bd.i] || 0) * bd.s);
+    const ax = (bd) => stick(axisVal(g, bd.i) * bd.s);
     pad.x = ax(binds.moveX); pad.y = -ax(binds.moveY);
     const lx = ax(binds.lookX), ly = ax(binds.lookY);
     if (pad.x || pad.y || lx || ly || Object.values(cur).some(Boolean)) pad.active = true;
