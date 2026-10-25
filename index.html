@@ -413,7 +413,7 @@ body.social #tTalk.on{display:flex}
       <b>Sprint</b><span>Push the left stick all the way forward</span>
       <b>Map · Talk</b><span>Map opens the Director. Walk up to people in Emberhold and tap Talk</span>
     </div>
-    <div class="btnrow"><button class="btn" id="play">Deploy</button><button class="btn ghost" id="ctrlOpen">Controller setup</button></div>
+    <div class="btnrow"><button class="btn" id="play">Deploy</button><button class="btn ghost" id="ctrlOpen">Controller setup</button><button class="btn ghost padToggle" type="button" aria-pressed="true">Controller: On</button></div>
     <div class="lbl" id="padStatus" hidden>Controller connected · press A to deploy</div>
   </div>
 </div>
@@ -422,7 +422,7 @@ body.social #tTalk.on{display:flex}
   <div class="panel">
     <h2 class="title" style="font-size:64px">Paused</h2>
     <label class="sens" id="sensWrap"><span class="lbl">Look sensitivity · <b id="sensVal">1.0</b>×</span><input type="range" id="sens" min="0.4" max="2.2" step="0.1" value="1"></label>
-    <div class="btnrow"><button class="btn" id="resume">Resume</button><button class="btn ghost" id="dirOpen">Director</button><button class="btn ghost" id="goHome">Return to Emberhold</button><button class="btn ghost" id="ctrlOpen2">Controller setup</button></div>
+    <div class="btnrow"><button class="btn" id="resume">Resume</button><button class="btn ghost" id="dirOpen">Director</button><button class="btn ghost" id="goHome">Return to Emberhold</button><button class="btn ghost" id="ctrlOpen2">Controller setup</button><button class="btn ghost padToggle" type="button" aria-pressed="true">Controller: On</button></div>
   </div>
 </div>
 
@@ -3437,6 +3437,17 @@ function openCtrl(from){
 function closeCtrl(){ pad.capture = null; show('ctrlOv', false); show(ctrlReturn === 'pause' ? 'pauseOv' : 'menu', true); }
 $('ctrlOpen').addEventListener('click', () => openCtrl('menu'));
 $('ctrlOpen2').addEventListener('click', () => openCtrl('pause'));
+// controller input can be switched off entirely (setup screen still reads the pad so it can be tested)
+let padOn = true;
+try { padOn = localStorage.getItem('emberdrift.padOn') !== '0'; } catch (e) {}
+function setPadOn(on){
+  padOn = on;
+  try { localStorage.setItem('emberdrift.padOn', on ? '1' : '0'); } catch (e) {}
+  if (!on) { pad.active = false; pad.x = pad.y = 0; pad.sprint = false; firing = mouseFiring; adsHeld = mouseAds || touchAds; }
+  document.querySelectorAll('.padToggle').forEach(b => { b.textContent = 'Controller: ' + (on ? 'On' : 'Off'); b.setAttribute('aria-pressed', on); });
+}
+document.querySelectorAll('.padToggle').forEach(b => b.addEventListener('click', () => setPadOn(!padOn)));
+setPadOn(padOn);
 $('ctrlBack').addEventListener('click', closeCtrl);
 $('ctrlRemap').addEventListener('click', startRemap);
 $('ctrlSkip').addEventListener('click', () => { if (pad.capture) advance(); });
@@ -3450,7 +3461,7 @@ const aimRay = new THREE.Raycaster();
 function pollPad(dt){
   const g = getPad();
   updateTester(g);
-  if (!g) return;
+  if (!g || !padOn) return;
   trackRest(g, dt);
   if (pad.capture) { captureStep(g, dt); return; }
   const cur = {}; for (const a of ACTIONS) cur[a.id] = pressedBy(g, binds[a.id]);
