@@ -39,7 +39,9 @@ const ROOT = path.resolve(__dirname, '..', '..'), THREE_DIR = process.argv[2], O
   if (mode === 'models') {
     await p.evaluate(() => __t.travelTo('tower')); await p.waitForTimeout(3500);
     await p.evaluate(() => { __t.player.pos.set(0, 0, -6.2); __t.player.yaw = 0; __t.player.pitch = -0.05; }); await p.waitForTimeout(900);
-    await p.screenshot({ path: path.join(OUT, 'npc_kestrel.png') });
+    await p.screenshot({ path: path.join(OUT, pre + 'npc_kestrel.png') });
+    await p.evaluate(() => { __t.player.pos.set(0.3, 0, -12.2); __t.player.yaw = Math.PI; __t.player.pitch = 0.05; }); await p.waitForTimeout(900);
+    await p.screenshot({ path: path.join(OUT, pre + 'npc_kestrel_close.png') });
   }
   if (mode === 'guns') for (const a of ['auto', 'pulse', 'hand', 'scout', 'smg', 'shotgun', 'sniper', 'rocket']) {
     await p.evaluate(a => __t.gun(a), a); await p.waitForTimeout(900);
