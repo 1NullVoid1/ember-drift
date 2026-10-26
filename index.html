@@ -557,11 +557,11 @@ sun.shadow.bias = -0.0008;
 scene.add(sun);
 
 const skyMat = new THREE.ShaderMaterial({
-  uniforms: { sunDir: { value: sunDir }, top: { value: new THREE.Color(0x0a0d29) }, mid: { value: new THREE.Color(0x54336f) }, hor: { value: new THREE.Color(0xff8f5c) }, swA: { value: new THREE.Color(0x8c3899) }, swB: { value: new THREE.Color(0x3373b3) } },
+  uniforms: { sunDir: { value: sunDir }, top: { value: new THREE.Color(0x0a0d29) }, mid: { value: new THREE.Color(0x54336f) }, hor: { value: new THREE.Color(0xff8f5c) }, swA: { value: new THREE.Color(0x8c3899) }, swB: { value: new THREE.Color(0x3373b3) }, sunK: { value: 1 } },
   side: THREE.BackSide, depthWrite: false,
   vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
   fragmentShader: `
-    uniform vec3 sunDir, top, mid, hor, swA, swB; varying vec3 vDir;
+    uniform vec3 sunDir, top, mid, hor, swA, swB; uniform float sunK; varying vec3 vDir;
     void main(){
       vec3 d = normalize(vDir); float h = d.y;
       vec3 col = mix(hor, mid, smoothstep(0.0, 0.22, h));
@@ -571,8 +571,9 @@ const skyMat = new THREE.ShaderMaterial({
       col += swA * smoothstep(0.35, 1.0, swirl) * smoothstep(0.08, 0.5, h) * 0.32;
       col += swB * smoothstep(0.5, 1.0, -swirl) * smoothstep(0.25, 0.7, h) * 0.18;
       float s = max(dot(d, sunDir), 0.0);
-      col += vec3(1.0,0.78,0.5) * pow(s, 400.0) * 4.0 + vec3(1.0,0.5,0.3) * pow(s, 10.0) * 0.45;
+      col += (vec3(1.0,0.78,0.5) * pow(s, 400.0) * 4.0 + vec3(1.0,0.5,0.3) * pow(s, 10.0) * 0.45) * sunK;
       gl_FragColor = vec4(col, 1.0);
+      #include <encodings_fragment>
     }`
 });
 const skyGroup = new THREE.Group();
@@ -654,6 +655,9 @@ const TRI_VERT = `#include <worldpos_vertex>
     triW = instanceMatrix * triW; triN = mat3(instanceMatrix) * triN;
   #endif
   vTriPos = (modelMatrix * triW).xyz; vTriNormal = normalize(mat3(modelMatrix) * triN);`;
+// object-space variant for things that move (guns): the texture rides along with the mesh
+const TRI_VERT_LOCAL = `#include <worldpos_vertex>
+  vTriPos = transformed; vTriNormal = normalize(objectNormal);`;
 const TRI_FRAG_DECL = `varying vec3 vTriPos;
 varying vec3 vTriNormal;
 vec3 triWeights(vec3 n){ vec3 b = pow(abs(n), vec3(4.0)); return b / (b.x + b.y + b.z); }
@@ -673,13 +677,13 @@ function triMat(name, opt){
   m.userData.tri = u;
   m.onBeforeCompile = sh => {
     Object.assign(sh.uniforms, u);
-    sh.vertexShader = TRI_VERT_DECL + sh.vertexShader.replace('#include <worldpos_vertex>', TRI_VERT);
+    sh.vertexShader = TRI_VERT_DECL + sh.vertexShader.replace('#include <worldpos_vertex>', opt.local ? TRI_VERT_LOCAL : TRI_VERT);
     sh.fragmentShader = TRI_FRAG_DECL + 'uniform float triScale, triBump; uniform sampler2D triMap, triNorm, triRough;\n' + sh.fragmentShader
       .replace('#include <map_fragment>', 'vec3 tw = triWeights(vTriNormal); vec3 tp = vTriPos * triScale; diffuseColor *= triSample(triMap, tp, tw);')
       .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = roughness * (0.55 + 0.45 * triSample(triRough, tp, tw).g);')
       .replace('#include <normal_fragment_maps>', 'normal = normalize((viewMatrix * vec4(triNormal(triNorm, tp, tw, normalize(vTriNormal), triBump), 0.0)).xyz);');
   };
-  m.customProgramCacheKey = () => 'tri';
+  m.customProgramCacheKey = () => opt.local ? 'tri-local' : 'tri';
   return m;
 }
 // terrain: flat ground texture blended into triplanar rock on slopes, sampled at two scales to hide repeats
@@ -1072,6 +1076,22 @@ const LOCATIONS = {
   }
 };
 const STONE_BY_LOC = { tower: [0xf0e8e4, 0xb8c0cc], steppe: [0xe8d8cc, 0xa8b0bc], veyra: [0xe0eaf8, 0xa8b8d0], kharun: [0xc8d4b8, 0x98a490], crown: [0x6a5e6a, 0x504a58] };
+// image-based lighting: the current sky is baked into a prefiltered environment map so metal reflects the
+// horizon and shadowed sides pick up sky colour instead of going flat
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene(); envScene.add(new THREE.Mesh(new THREE.SphereGeometry(100, 32, 16), skyMat));
+let envRT = null;
+const ENV_MATS = [];
+function updateEnv(){
+  // PMREM writes RGBE, so the sky shader must encode its output (encodings_fragment) or the map blows out white
+  skyMat.uniforms.sunK.value = 0.2;
+  const rt = pmrem.fromScene(envScene, 0, 0.1, 500);
+  skyMat.uniforms.sunK.value = 1;
+  if (envRT) envRT.dispose();
+  envRT = rt;
+  // only hard surfaces get reflections; on rough terrain it reads as glitter
+  for (const [m, k] of ENV_MATS) { if (!m.envMap) m.needsUpdate = true; m.envMap = rt.texture; m.envMapIntensity = k; }
+}
 function applyPalette(def){
   const p = def.pal, u = skyMat.uniforms;
   u.top.value.setHex(p.top); u.mid.value.setHex(p.mid); u.hor.value.setHex(p.hor); u.swA.value.setHex(p.swA); u.swB.value.setHex(p.swB);
@@ -1081,6 +1101,7 @@ function applyPalette(def){
   sunDir.fromArray(p.sunDir).normalize(); sun.position.copy(sunDir).multiplyScalar(120);
   planet.visible = ring.visible = def.sky.planet; moonGroup.visible = def.sky.moon;
   const sc = STONE_BY_LOC[def.id] || STONE_BY_LOC.steppe; stoneMat.color.setHex(sc[0]); metalMat.color.setHex(sc[1]); applySurfaces(def.id);
+  updateEnv();
   farMat.color.setHex(new THREE.Color(p.fog).multiplyScalar(0.6).getHex());
 }
 for (const id in LOCATIONS) LOCATIONS[id].id = id;
@@ -1105,10 +1126,12 @@ const gun = new THREE.Group();
 // Units are gun-local (the whole gun is scaled by 0.62). Every model puts its pistol grip in the same
 // place so the right hand always lands on it; each one reports its own muzzle, sight height and
 // support-hand spot.
-const gunShell = new THREE.MeshStandardMaterial({ color: 0x8d8f94, metalness: 0.3, roughness: 0.55 });
-const gunFrame = new THREE.MeshStandardMaterial({ color: 0x2a2e37, metalness: 0.65, roughness: 0.38 });
-const gunPoly = new THREE.MeshStandardMaterial({ color: 0x17191d, metalness: 0.1, roughness: 0.7 });
-const gunMetal = new THREE.MeshStandardMaterial({ color: 0x9aa0a8, metalness: 0.9, roughness: 0.25 });
+const gunShell = triMat('gunmetal', { local: true, scale: 0.35, color: 0x8d8f94, metal: 0.3, rough: 0.7, bump: 0.6 });
+const gunFrame = triMat('gunmetal', { local: true, scale: 0.28, color: 0x2a2e37, metal: 0.65, rough: 0.6, bump: 0.5 });
+const gunPoly = triMat('gunmetal', { local: true, scale: 0.12, color: 0x1c1e22, metal: 0.05, rough: 1, bump: 0.9 });
+const gunMetal = triMat('gunmetal', { local: true, scale: 0.2, color: 0xa4aab2, metal: 0.9, rough: 0.45, bump: 0.3 });
+ENV_MATS.push([gunShell, 0.7], [gunFrame, 0.7], [gunPoly, 0.4], [gunMetal, 0.8], [metalMat, 0.35]);
+if (envRT) updateEnv();
 const gunLens = new THREE.MeshStandardMaterial({ color: 0x0a1418, metalness: 0.9, roughness: 0.05, emissive: 0x0b2a33, emissiveIntensity: 0.6 });
 const stripeMat = new THREE.MeshStandardMaterial({ color: 0x111111, emissive: 0xdfe3ea, emissiveIntensity: 0.9 });
 const SHELL_BY_TIER = [0x8d8f94, 0x6f8a70, 0x4f6d93, 0x4d3d66, 0xd9c48c];
@@ -1119,7 +1142,7 @@ function slab(p, pts, thick, mat, x, holes, bevel){
   const shape = gPath(pts);
   if (holes) holes.forEach(h => shape.holes.push(gPath(h)));
   const b = bevel === undefined ? 0.006 : bevel;
-  const geo = new THREE.ExtrudeGeometry(shape, { depth: thick, bevelEnabled: b > 0, bevelThickness: b, bevelSize: b, bevelSegments: 1, steps: 1, curveSegments: 4 });
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: thick, bevelEnabled: b > 0, bevelThickness: b, bevelSize: b, bevelSegments: 3, steps: 1, curveSegments: 6 });
   geo.translate(0, 0, -thick / 2); geo.rotateY(Math.PI / 2);
   const m = new THREE.Mesh(geo, mat); m.position.x = x || 0; p.add(m); return m;
 }
