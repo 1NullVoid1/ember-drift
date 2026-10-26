@@ -512,7 +512,10 @@ body.social #tTalk.on{display:flex}
 <script>
 // models live beside the page in models/game/ and stream in after it starts
 const glbLoader = new THREE.GLTFLoader();
-function loadGlb(name, ok, fail){ glbLoader.load('models/game/' + name + '.glb', ok, undefined, fail); }
+// the claude.ai copy can't serve .glb, so it carries the same models as glTF JSON and we fall back to those
+function loadGlb(name, ok, fail){
+  glbLoader.load('models/game/' + name + '.glb', ok, undefined, () => glbLoader.load('models/game/' + name + '.json', ok, undefined, fail));
+}
 // models that get rebuilt (NPCs each visit to Emberhold) load once and hand out skeleton-safe clones; their
 // materials are shared, so they are marked to survive the world teardown
 const glbShared = {};
