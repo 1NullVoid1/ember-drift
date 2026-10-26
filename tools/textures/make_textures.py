@@ -5,7 +5,7 @@ Each material gets three seamless 1024px maps:
   <name>_normal.jpg  tangent-space normal (OpenGL / +Y up, the convention three.js and Unity both read)
   <name>_rough.jpg   roughness (white = matte)
 
-Run:  python3 tools/textures/make_textures.py [output_dir]
+Run:  python3 tools/textures/make_textures.py [output_dir] [set names...]
 Needs numpy, scipy and Pillow.
 """
 import sys, os
@@ -257,6 +257,70 @@ def metal():
     save('metal', col, h, rough, 1.6)
 
 
+def gunmetal():
+    """Fine finish for weapons: powder-coat grain, machining lines, micro scratches and a few panel seams.
+    Colour is near-white so each gun's own material colour (rarity tint) shows through."""
+    grain = value_noise(512, 91)
+    mill = np.sin((xx * 160 + fbm(16, 3, 92) * 2) * np.pi * 2) * 0.5 + 0.5      # faint machining lines
+    scr = np.zeros((N, N))
+    r = np.random.default_rng(93)
+    for _ in range(160):                                                         # straight hairline scratches
+        x0, y0, ang, ln = r.random(), r.random(), r.random() * np.pi, 0.02 + r.random() * 0.12
+        dx, dy = np.cos(ang), np.sin(ang)
+        px, py = ((xx - x0 + 0.5) % 1) - 0.5, ((yy - y0 + 0.5) % 1) - 0.5
+        t = np.clip(px * dx + py * dy, 0, ln)
+        d = np.hypot(px - t * dx, py - t * dy)
+        scr = np.maximum(scr, np.clip(1 - d / 0.0012, 0, 1) * (0.4 + 0.6 * r.random()))
+    seam = np.ones((N, N))
+    for c in (0.25, 0.5, 0.75):
+        seam = np.minimum(seam, np.clip(np.abs(xx - c) / 0.0025, 0, 1))
+    seam = np.minimum(seam, np.clip(np.abs(yy - 0.5) / 0.0025, 0, 1))
+    wear = fbm(6, 5, 94)
+    h = grain * 0.15 + mill * 0.05 - scr * 0.25 + seam * 0.5
+    col = np.ones((N, N, 3)) * (0.86 + 0.08 * grain + 0.04 * wear)[..., None]
+    col = col * (0.6 + 0.4 * seam[..., None]) + scr[..., None] * 0.18
+    rough = 0.55 + 0.25 * grain + 0.1 * wear - scr * 0.3
+    save('gunmetal', col, h, rough, 1.0)
+
+
+def bone():
+    """Creature shell: porous ivory with growth bands, hairline cracks and pitting. Near-white so each
+    enemy's own colour tints it."""
+    pores = value_noise(384, 101)
+    pits = (pores > 0.82) * (pores - 0.82) / 0.18
+    bands = np.sin((yy * 22 + fbm(6, 4, 102) * 3) * np.pi * 2) * 0.5 + 0.5          # growth layering
+    f1, f2, _ = cells(70, 103)
+    crack = np.clip(1 - (f2 - f1) / 0.018, 0, 1) * np.clip((fbm(8, 3, 105) - 0.45) * 6, 0, 1)
+    blot = fbm(5, 5, 106)
+    h = bands * 0.12 + blot * 0.25 - pits * 0.3 - crack * 0.2
+    col = np.ones((N, N, 3)) * (0.82 + 0.12 * blot + 0.04 * bands)[..., None]
+    col *= (1 - 0.25 * crack - 0.2 * pits)[..., None]
+    col[..., 2] *= 0.94
+    rough = 0.5 + 0.25 * blot + 0.3 * pits + 0.2 * crack
+    save('bone', col, h, rough, 1.4)
+
+
+def fabric():
+    """Coarse woven cloth: over-under weave, slubby threads and faint wear. Near-white for tinting."""
+    w = 96                                                                           # threads per tile
+    u, v = xx * w, yy * w
+    warp_t = np.abs(np.sin(u * np.pi)) ** 0.6                                        # thread profiles
+    weft_t = np.abs(np.sin(v * np.pi)) ** 0.6
+    over = ((np.floor(u) + np.floor(v)) % 2).astype(float)                           # which thread is on top
+    slub = fbm(48, 3, 111)
+    h = over * warp_t + (1 - over) * weft_t + slub * 0.2
+    wear = fbm(4, 5, 112)
+    col = np.ones((N, N, 3)) * (0.7 + 0.22 * h / h.max() + 0.08 * slub)[..., None]
+    col *= (0.9 + 0.1 * wear)[..., None]
+    rough = 0.85 + 0.15 * slub
+    save('fabric', col, h, rough, 0.8)
+
+
+SETS = (gravel, rock, snow, moss, ash, tiles, concrete, metal, gunmetal, bone, fabric)
+
 if __name__ == '__main__':
-    for fn in (gravel, rock, snow, moss, ash, tiles, concrete, metal):
-        fn()
+    # optional names after the output dir regenerate only those sets
+    only = sys.argv[2:]
+    for fn in SETS:
+        if not only or fn.__name__ in only:
+            fn()
