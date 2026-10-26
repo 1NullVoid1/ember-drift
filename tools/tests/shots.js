@@ -1,5 +1,5 @@
 // Renders each location in headless Chromium and saves screenshots; prints any page or shader errors.
-// usage: node tools/tests/shots.js <three_dir> <out_dir> [phone|desk] [guns|models]
+// usage: node tools/tests/shots.js <three_dir> <out_dir> [phone|desk] [guns|models|drops|world|fps]
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path');
 const ROOT = path.resolve(__dirname, '..', '..'), THREE_DIR = process.argv[2], OUT = process.argv[3], phone = process.argv[4] === 'phone';
@@ -15,7 +15,7 @@ const ROOT = path.resolve(__dirname, '..', '..'), THREE_DIR = process.argv[2], O
     const rel = decodeURIComponent(new URL(r.request().url()).pathname.slice(1));
     let html = fs.readFileSync(path.join(ROOT, rel || 'index.html'));
     if (!rel || rel === 'index.html') {
-      html = html.toString().replace("requestAnimationFrame(frame);\n})();", "requestAnimationFrame(frame);\nwindow.__t = { travelTo, player, drop: p => { const L0 = loot.length; while (loot.length === L0 || loot[loot.length - 1].item.kind !== 'weapon') { if (loot.length > L0) { scene.remove(loot.pop().g); } dropLoot(p, 1); } }, show: (type, dist) => { if (window.__m) scene.remove(window.__m); const d = new THREE.Vector3(); camera.getWorldDirection(d); d.y = 0; d.normalize(); const e = buildEnemy(type); e.g.position.copy(camera.position).addScaledVector(d, dist); e.g.position.y = 0; e.g.lookAt(camera.position.x, e.g.position.y, camera.position.z); scene.add(e.g); window.__m = e.g; }, gun: (arch) => { const w = makeWeapon(ARCH[arch].slots[0], 3, 1010, { arch }); inv.equipped[w.slot] = w.uid; inv.items.push(w); player.wslot = WSLOTS.indexOf(w.slot); applyWeaponLook(); } };\n})();");
+      html = html.toString().replace("requestAnimationFrame(frame);\n})();", "requestAnimationFrame(frame);\nwindow.__t = { travelTo, player, info: () => JSON.stringify(renderer.info.render), get zone() { return ZONE; }, outposts, enemies, groundY, drop: p => { const L0 = loot.length; while (loot.length === L0 || loot[loot.length - 1].item.kind !== 'weapon') { if (loot.length > L0) { scene.remove(loot.pop().g); } dropLoot(p, 1); } }, show: (type, dist) => { if (window.__m) scene.remove(window.__m); const d = new THREE.Vector3(); camera.getWorldDirection(d); d.y = 0; d.normalize(); const e = buildEnemy(type); e.g.position.copy(camera.position).addScaledVector(d, dist); e.g.position.y = 0; e.g.lookAt(camera.position.x, e.g.position.y, camera.position.z); scene.add(e.g); window.__m = e.g; }, gun: (arch) => { const w = makeWeapon(ARCH[arch].slots[0], 3, 1010, { arch }); inv.equipped[w.slot] = w.uid; inv.items.push(w); player.wslot = WSLOTS.indexOf(w.slot); applyWeaponLook(); } };\n})();");
       return r.fulfill({ body: html, contentType: 'text/html; charset=utf-8' });
     }
     r.fulfill({ body: html, contentType: rel.endsWith('.jpg') ? 'image/jpeg' : rel.endsWith('.glb') ? 'model/gltf-binary' : 'application/octet-stream' });
@@ -26,7 +26,7 @@ const ROOT = path.resolve(__dirname, '..', '..'), THREE_DIR = process.argv[2], O
   const pre = phone ? 'ph_' : '';
   await p.screenshot({ path: path.join(OUT, pre + 'menu.png') });
   const mode = process.argv[5];
-  const ids = mode === 'guns' || mode === 'models' || mode === 'drops' ? ['steppe'] : ['tower', 'steppe', 'veyra', 'kharun'];
+  const ids = mode === 'guns' || mode === 'models' || mode === 'drops' ? ['steppe'] : mode === 'world' || mode === 'fps' ? [] : ['tower', 'steppe', 'veyra', 'kharun'];
   for (const id of ids) {
     await p.evaluate(id => __t.travelTo(id), id); await p.waitForTimeout(3500);
     await p.evaluate(() => { __t.player.pitch = -0.12; }); await p.waitForTimeout(500);
@@ -42,6 +42,27 @@ const ROOT = path.resolve(__dirname, '..', '..'), THREE_DIR = process.argv[2], O
     await p.screenshot({ path: path.join(OUT, pre + 'npc_kestrel.png') });
     await p.evaluate(() => { __t.player.pos.set(0.3, 0, -12.2); __t.player.yaw = Math.PI; __t.player.pitch = 0.05; }); await p.waitForTimeout(900);
     await p.screenshot({ path: path.join(OUT, pre + 'npc_kestrel_close.png') });
+  }
+  if (mode === 'fps') for (const id of ['tower', 'steppe']) {
+    await p.evaluate(id => __t.travelTo(id), id); await p.waitForTimeout(4000);
+    const f = await p.evaluate(() => new Promise(r => { let n = 0; const t0 = performance.now(); const f = () => { if (++n < 20) requestAnimationFrame(f); else r(1000 * n / (performance.now() - t0)); }; requestAnimationFrame(f); }));
+    console.log(id, 'fps', f.toFixed(1), 'drawcalls', await p.evaluate(() => __t.info()));
+  }
+  if (mode === 'world') for (const id of ['steppe', 'veyra', 'kharun']) {
+    await p.evaluate(id => __t.travelTo(id), id); await p.waitForTimeout(3500);
+    // stand halfway down the first path, looking toward its outpost
+    await p.evaluate(() => { const s = __t.zone.paths[0], a = { x: s.ax, z: s.az }, b = { x: s.bx, z: s.bz }; __t.player.pos.set((a.x + b.x) / 2, 0, (a.z + b.z) / 2); __t.player.yaw = Math.atan2(-(b.x - a.x), -(b.z - a.z)); __t.player.pitch = -0.08; });
+    await p.waitForTimeout(1200); await p.screenshot({ path: path.join(OUT, pre + 'path_' + id + '.png') });
+    // walk up to the outpost so its squad wakes
+    const info = await p.evaluate(() => { const o = __t.zone.areas[1]; __t.player.pos.set(o.x + o.r + 20, 0, o.z); __t.player.yaw = Math.PI / 2; __t.player.pitch = -0.1; return { areas: __t.zone.areas.length, paths: __t.zone.paths.length }; });
+    const f0 = await p.evaluate(() => new Promise(r => { let n = 0; const t0 = performance.now(); const f = () => { if (++n < 30) requestAnimationFrame(f); else r(1000 * n / (performance.now() - t0)); }; requestAnimationFrame(f); }));
+    await p.waitForTimeout(9000); await p.screenshot({ path: path.join(OUT, pre + 'outpost_' + id + '.png') });
+    info.fps = Math.round(f0);
+    const st = await p.evaluate(() => ({ enemies: __t.enemies.length, aware: __t.enemies.filter(e => e.aware).length, outpost: __t.enemies.filter(e => e.outpost).length }));
+    // run far away: outpost enemies should lose track
+    await p.evaluate(() => { const o = __t.zone.areas[1]; __t.player.pos.set(0, 0, 8); }); await p.waitForTimeout(9000);
+    const st2 = await p.evaluate(() => ({ aware: __t.enemies.filter(e => e.outpost && e.aware).length }));
+    console.log(id, JSON.stringify(info), JSON.stringify(st), 'after leaving', JSON.stringify(st2));
   }
   if (mode === 'drops') {
     await p.evaluate(() => { __t.player.pitch = -0.35; for (let k = 0; k < 6; k++) __t.drop(new THREE.Vector3(__t.player.pos.x + (k - 2.5) * 1.3, 0, __t.player.pos.z - 4.5)); });

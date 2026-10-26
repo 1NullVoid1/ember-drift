@@ -578,7 +578,9 @@ sun.castShadow = true;
 Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 320 });
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.bias = -0.0008;
-scene.add(sun);
+scene.add(sun); scene.add(sun.target);
+// the shadow box follows the player in 8m steps so outposts get shadows too without shimmering
+function followSun(){ const x = Math.round(player.pos.x / 8) * 8, z = Math.round(player.pos.z / 8) * 8; sun.target.position.set(x, 0, z); sun.position.copy(sunDir).multiplyScalar(120).add(sun.target.position); }
 
 const skyMat = new THREE.ShaderMaterial({
   uniforms: { sunDir: { value: sunDir }, top: { value: new THREE.Color(0x0a0d29) }, mid: { value: new THREE.Color(0x54336f) }, hor: { value: new THREE.Color(0xff8f5c) }, swA: { value: new THREE.Color(0x8c3899) }, swB: { value: new THREE.Color(0x3373b3) }, sunK: { value: 1 } },
@@ -756,18 +758,75 @@ function applySurfaces(id){
   terrainU.gTint.value.setHex(s.g); terrainU.rTint.value.setHex(s.r);
 }
 
+// ---------- explorable zone: the main arena plus outposts reached along paths ----------
+// ZONE.areas are open circles, ZONE.paths are corridors between them. Everything walkable is where
+// playDist() <= 0; the terrain is flat there and rises into hills and canyon walls beyond.
+let ZONE = { areas: [], paths: [] };
+const TERR = { off: 3, hill: 1, drop: 0 };
+function segDist(x, z, ax, az, bx, bz){
+  const dx = bx - ax, dz = bz - az, t = clamp(((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz), 0, 1);
+  return Math.hypot(x - ax - dx * t, z - az - dz * t);
+}
+function playDist(x, z){
+  let d = Infinity;
+  for (const a of ZONE.areas) d = Math.min(d, Math.hypot(x - a.x, z - a.z) - a.r);
+  for (const p of ZONE.paths) d = Math.min(d, segDist(x, z, p.ax, p.az, p.bx, p.bz) - p.w / 2);
+  return d;
+}
+// pull a point back inside the walkable space (onto the nearest area or path edge)
+function clampPlay(p, r){
+  if (playDist(p.x, p.z) <= -r) return;
+  let best = null, bd = Infinity;
+  for (const a of ZONE.areas) {
+    const dx = p.x - a.x, dz = p.z - a.z, d = Math.hypot(dx, dz), lim = a.r - r;
+    if (d - lim < bd) { bd = d - lim; best = d > lim ? [a.x + dx / d * lim, a.z + dz / d * lim] : [p.x, p.z]; }
+  }
+  for (const q of ZONE.paths) {
+    const dx = q.bx - q.ax, dz = q.bz - q.az, t = clamp(((p.x - q.ax) * dx + (p.z - q.az) * dz) / (dx * dx + dz * dz), 0, 1);
+    const cx = q.ax + dx * t, cz = q.az + dz * t, ox = p.x - cx, oz = p.z - cz, d = Math.hypot(ox, oz), lim = q.w / 2 - r;
+    if (d - lim < bd) { bd = d - lim; best = d > lim ? [cx + ox / d * lim, cz + oz / d * lim] : [p.x, p.z]; }
+  }
+  if (best && bd > 0) { p.x = best[0]; p.z = best[1]; }
+}
+// lay out outposts around the main arena with bending paths to each, from the location's seed
+function makeZone(def){
+  ZONE = { areas: [{ x: 0, z: 0, r: def.radius, main: true }], paths: [] };
+  const n = def.outposts || 0, r = mulberry32(def.seed * 7919 + 13), base = r() * Math.PI * 2;
+  for (let k = 0; k < n; k++) {
+    const a = base + k / n * Math.PI * 2 + (r() - 0.5) * 0.6, d = def.radius + 105 + r() * 55, ar = 24 + r() * 10;
+    const ox = Math.cos(a) * d, oz = Math.sin(a) * d;
+    ZONE.areas.push({ x: ox, z: oz, r: ar, name: OUTPOST_NAMES[(def.seed + k) % OUTPOST_NAMES.length] });
+    // one bend halfway, pushed sideways, so paths wind instead of running dead straight
+    const bend = (r() < 0.5 ? -1 : 1) * (18 + r() * 22), mx = Math.cos(a) * d * 0.55 - Math.sin(a) * bend, mz = Math.sin(a) * d * 0.55 + Math.cos(a) * bend;
+    const w = 11 + r() * 3;
+    ZONE.paths.push({ ax: Math.cos(a) * def.radius * 0.8, az: Math.sin(a) * def.radius * 0.8, bx: mx, bz: mz, w }, { ax: mx, az: mz, bx: ox, bz: oz, w });
+  }
+}
+const OUTPOST_NAMES = ['The Sunken Relay', 'Ashfall Yard', 'Glasswind Pass', 'The Hollow Nest', 'Cinder Gate', 'Lantern Rise', 'The Quiet Spire', 'Brokenlight Basin'];
+// terrain height at any point; scenery uses it so props sit on the slopes instead of floating
+function groundY(x, z){
+  const d = playDist(x, z), m = smooth(4, 80, d);
+  const n = fbm(x * 0.011 + TERR.off, z * 0.011);
+  let y = m * (n * 80 + m * 18) * TERR.hill + (d > 2 ? fbm(x * 0.2, z * 0.2) * 1.2 : 0);
+  if (TERR.drop) y -= smooth(0, 10, d) * TERR.drop;
+  return y;
+}
+// a random spot outside the walkable space (for slope scenery); gives up after a few tries
+function sceneryAt(minR, span, margin){
+  for (let t = 0; t < 12; t++) {
+    const a = srand() * Math.PI * 2, d = minR + srand() * span, x = Math.cos(a) * d, z = Math.sin(a) * d;
+    if (playDist(x, z) > margin) return { x, z, d };
+  }
+  return null;
+}
 function buildTerrain(W, o){
-  const g = new THREE.PlaneGeometry(1000, 1000, isTouch ? 120 : 190, isTouch ? 120 : 190); g.rotateX(-Math.PI / 2);
+  const g = new THREE.PlaneGeometry(1000, 1000, isTouch ? 160 : 240, isTouch ? 160 : 240); g.rotateX(-Math.PI / 2);
   const pos = g.attributes.position, cols = new Float32Array(pos.count * 3);
   const sand = new THREE.Color(o.sand), rock = new THREE.Color(o.rock), slab = new THREE.Color(o.slab), c = new THREE.Color();
-  const off = o.off || 3, hill = o.hill === undefined ? 1 : o.hill, drop = o.drop || 0;
+  TERR.off = o.off || 3; TERR.hill = o.hill === undefined ? 1 : o.hill; TERR.drop = o.drop || 0;
   for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), z = pos.getZ(i), r = Math.hypot(x, z);
-    const m = smooth(ARENA + 4, 130, r);
-    const n = fbm(x * 0.011 + off, z * 0.011);
-    let y = m * (n * 80 + m * 18) * hill + (r > ARENA + 2 ? fbm(x * 0.2, z * 0.2) * 1.2 : 0);
-    if (drop) y -= smooth(ARENA, ARENA + 10, r) * drop;
-    pos.setY(i, y);
+    const x = pos.getX(i), z = pos.getZ(i);
+    pos.setY(i, groundY(x, z));
     const k = fbm(x * 0.05, z * 0.05), b = 0.78 + k * 0.38;
     cols[i*3] = b; cols[i*3+1] = b; cols[i*3+2] = b;
   }
@@ -815,6 +874,7 @@ function megastructures(W, n, trims){
   for (let i = 0; i < n; i++) {
     const a = srand() * Math.PI * 2, d = 160 + srand() * 380;
     const w = 8 + srand() * 26, h = 40 + srand() * 170;
+    if (playDist(Math.cos(a) * d, Math.sin(a) * d) < w + 20) continue;
     const t = new THREE.Mesh(new THREE.BoxGeometry(w, h, w * (0.6 + srand())), farMat);
     t.position.set(Math.cos(a) * d, h / 2 - 6 + fbm(Math.cos(a) * d * 0.011 + 3, Math.sin(a) * d * 0.011) * 30, Math.sin(a) * d);
     t.rotation.set((srand() - 0.5) * 0.15, srand() * 3, (srand() - 0.5) * 0.15);
@@ -902,11 +962,12 @@ function buildVeyra(W){
   scatterCover(16, stoneMat, metalMat, [trimArc]);
   // crystal spires: some inside the arena as cover, the rest on the slopes
   const outer = [];
-  for (let i = 0; i < 46; i++) {
-    const inside = i < 8, a = srand() * Math.PI * 2, d = inside ? 14 + srand() * (ARENA - 20) : ARENA + 10 + srand() * 140;
+  for (let i = 0; i < 70; i++) {
+    const inside = i < 8, a = srand() * Math.PI * 2, d = inside ? 14 + srand() * (ARENA - 20) : ARENA + 10 + srand() * 200;
     const h = inside ? 4 + srand() * 5 : 10 + srand() * 40, r = h * (0.12 + srand() * 0.08);
     const x = Math.cos(a) * d, z = Math.sin(a) * d;
-    const y = h / 2 - 0.5 + (inside ? 0 : fbm(x * 0.011 + 11, z * 0.011) * 40 * smooth(ARENA + 4, 130, d)), rx = (srand() - 0.5) * 0.3, ry = srand() * 3, rz = (srand() - 0.5) * 0.3;
+    if (!inside && playDist(x, z) < 6) continue;
+    const y = h / 2 - 0.5 + (inside ? 0 : groundY(x, z)), rx = (srand() - 0.5) * 0.3, ry = srand() * 3, rz = (srand() - 0.5) * 0.3;
     if (!inside) { outer.push({ x, y, z, sx: r, sy: h, sz: r, rx, ry, rz }); continue; }
     const c = new THREE.Mesh(new THREE.ConeGeometry(r, h, 5), ice);
     c.position.set(x, y, z); c.rotation.set(rx, ry, rz); c.castShadow = true; W.add(c);
@@ -932,7 +993,7 @@ function buildKharun(W){
   const leaf2 = new THREE.MeshStandardMaterial({ color: 0x4f8a3a, roughness: 0.9, flatShading: true });
   scatterCover(18, stoneMat, stoneMat, [trimArc, trimSolar]);
   const tree = (x, z, s, solid) => {
-    const y = solid ? 0 : fbm(x * 0.011 + 23, z * 0.011) * 80 * 1.1 * smooth(ARENA + 4, 130, Math.hypot(x, z)) * 0.9;
+    const y = solid ? 0 : groundY(x, z);
     const t = new THREE.Group(); t.position.set(x, y, z); W.add(t);
     const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35 * s, 0.6 * s, 7 * s, 7), bark); trunk.position.y = 3.5 * s; trunk.castShadow = true; t.add(trunk);
     for (let k = 0; k < 3; k++) {
@@ -944,9 +1005,9 @@ function buildKharun(W){
   for (let i = 0; i < 10; i++) { const a = srand() * 6.28, d = 12 + srand() * (ARENA - 18); tree(Math.cos(a) * d, Math.sin(a) * d, 0.9 + srand() * 0.5, true); }
   // the forest beyond the arena: trunks and canopies drawn as three instanced batches
   const trunks = [], can1 = [], can2 = [];
-  for (let i = 0; i < 90; i++) {
-    const a = srand() * 6.28, d = ARENA + 6 + srand() * 130, x = Math.cos(a) * d, z = Math.sin(a) * d, s = 1.6 + srand() * 2.4;
-    const y = fbm(x * 0.011 + 23, z * 0.011) * 80 * 1.1 * smooth(ARENA + 4, 130, d) * 0.9;
+  for (let i = 0; i < 160; i++) {
+    const at = sceneryAt(ARENA + 6, 220, 5); if (!at) continue;
+    const { x, z } = at, s = 1.6 + srand() * 2.4, y = groundY(x, z) - 0.5;
     trunks.push({ x, y: y + 3.5 * s, z, sx: s, sy: s, sz: s });
     for (let k = 0; k < 3; k++) { const r = (2.2 + srand() * 1.4) * s; (k ? can1 : can2).push({ x: x + (srand() - 0.5) * 2.4 * s, y: y + (6.4 + k * 1.3) * s, z: z + (srand() - 0.5) * 2.4 * s, sx: r, sy: r, sz: r, ry: srand() * 3 }); }
   }
@@ -970,7 +1031,7 @@ function buildCrown(W){
   const obsidian = new THREE.MeshStandardMaterial({ color: 0x15121a, roughness: 0.25, metalness: 0.6, flatShading: true });
   const trimBlood = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, emissive: 0xff3a3a, emissiveIntensity: 2 });
   scatterCover(18, obsidian, obsidian, [trimBlood]);
-  instanced(W, new THREE.ConeGeometry(0.1, 1, 4), obsidian, Array.from({ length: 60 }, () => { const a = srand() * 6.28, d = ARENA + 8 + srand() * 200, h = 20 + srand() * 90; return { x: Math.cos(a) * d, y: h / 2, z: Math.sin(a) * d, sx: h, sy: h, sz: h, rx: (srand() - 0.5) * 0.5, ry: srand() * 3, rz: (srand() - 0.5) * 0.5 }; }));
+  instanced(W, new THREE.ConeGeometry(0.1, 1, 4), obsidian, Array.from({ length: 80 }, () => sceneryAt(ARENA + 8, 220, 8)).filter(Boolean).map(({ x, z }) => { const h = 20 + srand() * 90; return { x, y: groundY(x, z) + h / 2 - 2, z, sx: h, sy: h, sz: h, rx: (srand() - 0.5) * 0.5, ry: srand() * 3, rz: (srand() - 0.5) * 0.5 }; }));
   // the crown itself: a ring of spikes floating over the horizon
   const crown = new THREE.Group(); crown.position.set(0, 120, -420); W.add(crown);
   for (let k = 0; k < 14; k++) { const sp = new THREE.Mesh(new THREE.ConeGeometry(6, 60, 4), obsidian); const a = k / 14 * Math.PI * 2; sp.position.set(Math.cos(a) * 60, 0, Math.sin(a) * 60); sp.rotation.z = Math.cos(a) * 0.4; crown.add(sp); }
@@ -978,6 +1039,51 @@ function buildCrown(W){
   worldTicks.push(dt => { crown.rotation.y += dt * 0.05; });
   arenaSlabs(W, 20);
   ambientParticles(W, 260, 0xff5a3a, 0.12, -0.8, 0.6);
+}
+
+// ---------- outposts and the paths to them (every combat location) ----------
+const outposts = [];
+function buildOutposts(W, def){
+  const trims = [trimArc, trimSolar];
+  // path markers: flat stones down the middle and glowing posts along the edges
+  const stones = [], posts = [];
+  for (const p of ZONE.paths) {
+    const len = Math.hypot(p.bx - p.ax, p.bz - p.az), dx = (p.bx - p.ax) / len, dz = (p.bz - p.az) / len;
+    for (let t = 4; t < len; t += 7) {
+      const x = p.ax + dx * t + (srand() - 0.5) * 2, z = p.az + dz * t + (srand() - 0.5) * 2;
+      if (Math.hypot(x, z) < def.radius - 2) continue;
+      stones.push({ x, y: 0.03, z, sx: 2.5 + srand() * 2, sy: 1, sz: 2.5 + srand() * 2, ry: srand() * 3 });
+    }
+    for (let t = 10; t < len; t += 22) for (const side of [-1, 1]) {
+      const x = p.ax + dx * t - dz * side * (p.w / 2 - 0.8), z = p.az + dz * t + dx * side * (p.w / 2 - 0.8);
+      if (Math.hypot(x, z) < def.radius + 2) continue;
+      posts.push({ x, y: 1.1, z });
+    }
+  }
+  if (stones.length) instanced(W, new THREE.BoxGeometry(1, 0.1, 1), slabMat, stones).receiveShadow = true;
+  if (posts.length) {
+    instanced(W, new THREE.BoxGeometry(0.22, 2.2, 0.22), metalMat, posts);
+    instanced(W, new THREE.BoxGeometry(0.26, 0.18, 0.26), trims[def.seed % 2], posts.map(o => ({ x: o.x, y: 2.15, z: o.z })));
+  }
+  ZONE.areas.forEach((a, k) => {
+    if (a.main) return;
+    // floor, cover, and a tall beacon you can spot from the arena
+    for (let i = 0; i < 9; i++) {
+      const ang = srand() * Math.PI * 2, d = srand() * a.r * 0.9;
+      const s = new THREE.Mesh(new THREE.BoxGeometry(3 + srand() * 5, 0.12, 3 + srand() * 5), slabMat);
+      s.position.set(a.x + Math.cos(ang) * d, 0.04, a.z + Math.sin(ang) * d); s.rotation.y = srand() * 3; s.receiveShadow = true; W.add(s);
+    }
+    const n = 7 + Math.floor(srand() * 4);
+    for (let i = 0; i < n; i++) {
+      const ang = i / n * Math.PI * 2 + srand() * 0.5, d = 7 + srand() * (a.r - 11), tall = srand() < 0.3;
+      const w = tall ? 2.4 + srand() : 3 + srand() * 4, dd = tall ? 2.4 + srand() : 1.1 + srand() * 1.4, h = tall ? 6 + srand() * 6 : 1.4 + srand() * 1.3;
+      addBlock(a.x + Math.cos(ang) * d, a.z + Math.sin(ang) * d, w, h, dd, srand() * Math.PI, tall ? stoneMat : metalMat, tall ? trims[i % 2] : null);
+    }
+    const tower = addBlock(a.x, a.z, 3.2, 22, 3.2, srand(), stoneMat, trims[k % 2]);
+    const glow = glowSprite(k % 2 ? 0xff9a4a : 0x6fd2ff, 26); glow.position.set(a.x, 25, a.z); W.add(glow);
+    worldTicks.push(() => { glow.material.opacity = 0.55 + Math.sin(time * 1.6 + k) * 0.25; });
+    outposts.push({ area: a, alive: [], cooldown: 0, cleared: false });
+  });
 }
 
 // ---------- location: Emberhold, the social hub ----------
@@ -1079,25 +1185,25 @@ const LOCATIONS = {
     sky: { planet: false, moon: true }, map: { x: 42, y: 56, s: 92, c: ['#ffe2b0', '#ff9a52', '#5a2a1a'] }
   },
   steppe: {
-    name: 'Shattered Steppe', region: 'Aurex · Patrol', combat: true, radius: 54, spawn: [0, 0, 8], yaw: 0, build: buildSteppe, seed: 7, threat: 1, power: 1000,
+    name: 'Shattered Steppe', region: 'Aurex · Patrol', combat: true, radius: 54, outposts: 3, spawn: [0, 0, 8], yaw: 0, build: buildSteppe, seed: 7, threat: 1, power: 1000,
     desc: 'Broken ruins under a ringed giant. The Hollow came here first and dug in.',
     pal: { top: 0x0a0d29, mid: 0x54336f, hor: 0xff8f5c, swA: 0x8c3899, swB: 0x3373b3, fog: 0x4a3550, fogD: 0.0075, hemiS: 0xa8b8ff, hemiG: 0x5a3a2c, sun: 0xffc596, sunI: 1.25, sunDir: [0.62, 0.2, -0.76] },
     sky: { planet: true, moon: true }, map: { x: 20, y: 30, s: 70, c: ['#ffd2a2', '#c46d5a', '#3a1a24'] }
   },
   veyra: {
-    name: 'Frostfall Reach', region: 'Veyra · Patrol', combat: true, radius: 56, spawn: [0, 0, 10], yaw: 0, build: buildVeyra, seed: 19, threat: 1.15, power: 1010,
+    name: 'Frostfall Reach', region: 'Veyra · Patrol', combat: true, radius: 56, outposts: 3, spawn: [0, 0, 10], yaw: 0, build: buildVeyra, seed: 19, threat: 1.15, power: 1010,
     desc: 'A frozen moon of glass spires. Something under the ice is still transmitting.',
     pal: { top: 0x07122a, mid: 0x22406a, hor: 0x7ab0d8, swA: 0x3a6a9a, swB: 0x6ab0d0, fog: 0x5a7898, fogD: 0.009, hemiS: 0xa8c0e0, hemiG: 0x405878, hemiI: 0.8, sun: 0xd8e8ff, sunI: 0.75, sunDir: [-0.5, 0.35, -0.8] },
     sky: { planet: false, moon: true }, map: { x: 62, y: 22, s: 60, c: ['#ffffff', '#9fd2ff', '#2a3a6a'] }
   },
   kharun: {
-    name: 'Kharun Deep', region: 'Kharun · Patrol', combat: true, radius: 56, spawn: [0, 0, 10], yaw: 0, build: buildKharun, seed: 31, threat: 1.3, power: 1020,
+    name: 'Kharun Deep', region: 'Kharun · Patrol', combat: true, radius: 56, outposts: 3, spawn: [0, 0, 10], yaw: 0, build: buildKharun, seed: 31, threat: 1.3, power: 1020,
     desc: 'Overgrown temple ruins drowned in roots. Old things grow in the dark here.',
     pal: { top: 0x061410, mid: 0x1f4a3a, hor: 0xc8e6a0, swA: 0x3a8a5a, swB: 0x8ac04a, fog: 0x3f5f48, fogD: 0.012, hemiS: 0xc8ffd0, hemiG: 0x3a4a2a, sun: 0xfff0c0, sunI: 1.05, sunDir: [0.3, 0.45, 0.8] },
     sky: { planet: true, moon: false }, map: { x: 22, y: 76, s: 74, c: ['#d8ffb0', '#4f8a4a', '#12301e'] }
   },
   crown: {
-    name: 'The Hollow Crown', region: 'Expansion · Hollow throne world', combat: true, radius: 56, spawn: [0, 0, 10], yaw: 0, build: buildCrown, seed: 43, threat: 1.6, power: 1040, pack: 'hollowcrown',
+    name: 'The Hollow Crown', region: 'Expansion · Hollow throne world', combat: true, radius: 56, outposts: 3, spawn: [0, 0, 10], yaw: 0, build: buildCrown, seed: 43, threat: 1.6, power: 1040, pack: 'hollowcrown',
     desc: 'Where the Hollow come from. A ring of black spires turning over a red sky.',
     pal: { top: 0x0a0204, mid: 0x4a0a14, hor: 0xff4a3a, swA: 0x8a1a2a, swB: 0x3a0a3a, fog: 0x3a0a12, fogD: 0.01, hemiS: 0xff9aa0, hemiG: 0x2a0a10, sun: 0xff7a5a, sunI: 1.0, sunDir: [0, 0.3, -1] },
     sky: { planet: false, moon: false }, map: { x: 85, y: 20, s: 76, c: ['#ffb0a0', '#c42a2a', '#1a0408'] }
@@ -1127,7 +1233,7 @@ function applyPalette(def){
   scene.fog.color.setHex(p.fog); scene.fog.density = p.fogD;
   hemi.color.setHex(p.hemiS); hemi.groundColor.setHex(p.hemiG); hemi.intensity = p.hemiI || 0.8;
   sun.color.setHex(p.sun); sun.intensity = p.sunI;
-  sunDir.fromArray(p.sunDir).normalize(); sun.position.copy(sunDir).multiplyScalar(120);
+  sunDir.fromArray(p.sunDir).normalize(); sun.target.position.set(0, 0, 0); sun.position.copy(sunDir).multiplyScalar(120);
   planet.visible = ring.visible = def.sky.planet; moonGroup.visible = def.sky.moon;
   const sc = STONE_BY_LOC[def.id] || STONE_BY_LOC.steppe; stoneMat.color.setHex(sc[0]); metalMat.color.setHex(sc[1]); applySurfaces(def.id);
   updateEnv();
@@ -1144,8 +1250,10 @@ function buildLocation(id){
   scene.remove(world); world = new THREE.Group(); scene.add(world);
   colliders.length = 0; solidMeshes.length = 0; floaters.length = 0; worldTicks.length = 0; npcs.length = 0; emberCore = null;
   ARENA = def.radius; srand = mulberry32(def.seed);
+  makeZone(def); outposts.length = 0;
   applyPalette(def);
   def.build(world);
+  if (def.outposts) buildOutposts(world, def);
   loc = def;
 }
 
@@ -2224,25 +2332,32 @@ function buildPlayerModel(accent){
   };
 }
 
-function spawnEnemy(type, x, z){
+// opts.wave: part of the arena defence; opts.outpost: belongs to an outpost squad and guards it
+function spawnEnemy(type, x, z, opts){
+  opts = opts || {};
   const s = TYPES[type], m = buildEnemy(type);
   const scale = (1 + (wave - 1) * 0.14) * (loc && loc.threat || 1);
   const e = { type, s, ...m, hp: s.hp * scale, maxHp: s.hp * scale, shieldHp: (s.shield || 0) * scale, maxShield: (s.shield || 0) * scale,
-    pos: new THREE.Vector3(x, 0, z), cd: 1 + rand() * 1.5, strafe: rand() < 0.5 ? 1 : -1, strafeT: 0, flash: 0, dead: 0, born: 0, burst: 0 };
+    pos: new THREE.Vector3(x, 0, z), cd: 1 + rand() * 1.5, strafe: rand() < 0.5 ? 1 : -1, strafeT: 0, flash: 0, dead: 0, born: 0, burst: 0,
+    wave: !!opts.wave, outpost: opts.outpost || null, home: opts.home || { x, z }, aware: !!opts.wave, wanderT: 0, wanderA: rand() * 6.28 };
   e.parts.forEach(p => p.userData.enemy = e);
   if (e.shield) { e.shield.userData.enemy = e; e.shield.userData.isShield = true; }
   e.g.position.copy(e.pos); e.g.scale.setScalar(0.01);
   scene.add(e.g); enemies.push(e);
-  if (type === 'sentinel') bossRef = e;
+  if (type === 'sentinel' && e.wave) bossRef = e;
+  return e;
 }
 const pendingSpawns = [];
-function telegraph(type){
+const SPOT_RANGE = 42, LOSE_RANGE = 70;
+function telegraph(type, opts){
+  opts = opts || { wave: true };
+  const c = opts.home || { x: 0, z: 0 }, rMin = opts.home ? 3 : ARENA * 0.63, rSpan = opts.home ? opts.spread : ARENA * 0.33;
   let x, z, tries = 0;
-  do { const a = rand() * Math.PI * 2, d = ARENA * 0.63 + rand() * ARENA * 0.33; x = Math.cos(a) * d; z = Math.sin(a) * d; tries++; }
+  do { const a = rand() * Math.PI * 2, d = rMin + rand() * rSpan; x = c.x + Math.cos(a) * d; z = c.z + Math.sin(a) * d; tries++; }
   while (tries < 20 && Math.hypot(x - player.pos.x, z - player.pos.z) < 22);
   const col = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1.2, 14, 10, 1, true), glowMat(TYPES[type].glow).clone());
   col.position.set(x, 7, z);
-  pendingSpawns.push({ type, x, z, t: 0 });
+  pendingSpawns.push({ type, x, z, t: 0, opts });
   addFx(col, 0.9, (o, k) => { o.material.opacity = Math.sin(k * Math.PI) * 0.7; o.scale.set(1 - k * 0.7, 1, 1 - k * 0.7); });
 }
 
@@ -2613,6 +2728,7 @@ function targets(){
 function damageEnemy(e, dmg, crit, point, src){
   src = src || { kind: 'weapon' };
   if (e.dead) return false;
+  e.aware = true;
   if (e.shieldHp > 0) {
     e.shieldHp -= dmg; showNum(point, dmg, 'shield');
     e.shield.material.opacity = 0.5;
@@ -3845,7 +3961,7 @@ function collide(p, r){
     const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz), m = c.r + r;
     if (d < m && d > 0.0001) { p.x = c.x + dx / d * m; p.z = c.z + dz / d * m; }
   }
-  const rr = Math.hypot(p.x, p.z); if (rr > ARENA) { p.x *= ARENA / rr; p.z *= ARENA / rr; }
+  clampPlay(p, 0);
 }
 function updatePlayer(dt){
   let f = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0) + joy.y + pad.y;
@@ -3878,7 +3994,7 @@ function updatePlayer(dt){
   }
 }
 function updateEnemies(dt){
-  for (let i = pendingSpawns.length - 1; i >= 0; i--) { const p = pendingSpawns[i]; p.t += dt; if (p.t > 0.8) { spawnEnemy(p.type, p.x, p.z); pendingSpawns.splice(i, 1); } }
+  for (let i = pendingSpawns.length - 1; i >= 0; i--) { const p = pendingSpawns[i]; p.t += dt; if (p.t > 0.8) { spawnEnemy(p.type, p.x, p.z, p.opts); pendingSpawns.splice(i, 1); } }
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i];
     if (e.dead) {
@@ -3892,6 +4008,22 @@ function updateEnemies(dt){
     const side = new THREE.Vector3(-to.z, 0, to.x);
     let mv = new THREE.Vector3();
     e.cd -= dt; e.strafeT -= dt; if (e.strafeT <= 0) { e.strafe *= -1; e.strafeT = 1.5 + rand() * 2; }
+    // awareness: they spot you when close (or with a clear line at mid range) and give up past LOSE_RANGE
+    if (e.aware && d > LOSE_RANGE) e.aware = false;
+    else if (!e.aware && (d < 14 || (d < SPOT_RANGE && e.born >= 1 && Math.random() < dt * 3 && hasLOS(e.pos.clone().setY(1.5), player.pos.clone().setY(1.5))))) e.aware = true;
+    if (!e.aware) {
+      // drift back home, then mill about there
+      const hx = e.home.x - e.pos.x, hz = e.home.z - e.pos.z, hd = Math.hypot(hx, hz);
+      e.wanderT -= dt; if (e.wanderT <= 0) { e.wanderT = 2 + rand() * 3; e.wanderA = rand() * 6.28; }
+      if (hd > 5) mv.set(hx / hd, 0, hz / hd).multiplyScalar(e.s.speed * 0.6);
+      else mv.set(Math.cos(e.wanderA), 0, Math.sin(e.wanderA)).multiplyScalar(e.s.speed * 0.15);
+      e.pos.addScaledVector(mv, dt); collide(e.pos, e.s.radius);
+      e.g.position.set(e.pos.x, 0, e.pos.z);
+      e.anim(time, Math.hypot(mv.x, mv.z), i);
+      if (mv.lengthSq() > 0.01) e.g.rotation.y = Math.atan2(mv.x, mv.z);
+      e.flash = Math.max(0, e.flash - dt); e.body.emissive.setHex(e.burn > 0 ? 0x552200 : 0x000000);
+      continue;
+    }
     if (e.type === 'husk') {
       if (d > 1.5) mv.copy(to).multiplyScalar(e.s.speed).addScaledVector(side, Math.sin(time * 3 + i) * 2);
       else if (e.cd <= 0) { e.cd = 0.9; hurt(14); burst(player.pos.clone().setY(1.2), e.s.glow, 6, 4); }
@@ -3934,15 +4066,38 @@ function updateProjectiles(dt){
     if (g.trail && rand() < 0.7) burst(p.clone(), g.trail, 1, 1);
     if (!boom) for (const c of colliders) if (p.y < c.h && Math.hypot(p.x - c.x, p.z - c.z) < c.r + 0.1) { boom = true; break; }
     if (!boom) for (const e of enemies) if (!e.dead && e.pos.distanceTo(new THREE.Vector3(p.x, 0, p.z)) < e.s.radius + 0.3 && p.y < e.s.h) { boom = true; break; }
-    if (!boom && Math.hypot(p.x, p.z) > 140) { scene.remove(g.m); grenades.splice(i, 1); continue; }
+    if (!boom && Math.hypot(p.x - player.pos.x, p.z - player.pos.z) > 140) { scene.remove(g.m); grenades.splice(i, 1); continue; }
     if (boom) { scene.remove(g.m); grenades.splice(i, 1); g.onBoom(p.clone().setY(Math.max(p.y, 0.2))); }
   }
 }
 function updateWaves(dt){
   if (waveActive) {
     if (queue.length) { spawnT -= dt; if (spawnT <= 0) { telegraph(queue.shift()); spawnT = 0.5; } }
-    else if (!pendingSpawns.length && !enemies.length) { waveActive = false; interT = 5; wisp(`Wave ${wave} cleared. Grab the drops while you can.`); }
-  } else { interT -= dt; if (interT <= 0) startWave(); }
+    else if (!pendingSpawns.some(p => p.opts.wave) && !enemies.some(e => e.wave && !e.dead)) { waveActive = false; interT = 5; wisp(`Wave ${wave} cleared. Grab the drops while you can.`); }
+  } else if (Math.hypot(player.pos.x, player.pos.z) < ARENA + 6) { interT -= dt; if (interT <= 0) startWave(); }
+  updateOutposts(dt);
+}
+// each outpost holds a squad that wakes when you come near, drops a reward when wiped out, and returns
+// once you have been away for a while
+function updateOutposts(dt){
+  for (const o of outposts) {
+    const a = o.area, d = Math.hypot(player.pos.x - a.x, player.pos.z - a.z);
+    const alive = enemies.some(e => e.outpost === o && !e.dead) || pendingSpawns.some(p => p.opts.outpost === o);
+    if (o.active && !alive) {
+      o.active = false; o.cooldown = 90;
+      wisp(`${a.name} is clear. That should thin them out for a while.`);
+      dropLoot(new THREE.Vector3(a.x, 0, a.z), 2); questEvent('outpost', 1);
+    }
+    if (!o.active && d > a.r + 70) o.cooldown -= dt;
+    if (!o.active && o.cooldown <= 0 && d < a.r + 75) {
+      o.active = true;
+      const husks = 3 + Math.floor(rand() * 3), wardens = 1 + Math.floor(rand() * 2) + (wave > 3 ? 1 : 0);
+      const opts = { outpost: o, home: { x: a.x, z: a.z }, spread: a.r * 0.6 };
+      for (let i = 0; i < husks; i++) telegraph('husk', opts);
+      for (let i = 0; i < wardens; i++) telegraph('warden', opts);
+      if (!o.seen) { o.seen = true; wisp(`${a.name}. Hollow have dug in up ahead.`); }
+    }
+  }
 }
 function updateFx(dt){
   for (let i = fx.length - 1; i >= 0; i--) { const f = fx[i]; f.t += dt; const k = Math.min(1, f.t / f.life); f.update(f.obj, k); if (k >= 1) { scene.remove(f.obj); fx.splice(i, 1); } }
@@ -4031,7 +4186,7 @@ function frame(now){
   if (state === 'talk') talkCam(dt);
   talkZoom = lerp(talkZoom, state === 'talk' ? 1 : 0, Math.min(1, dt * 4));
   updateFx(dt);
-  updateCamera(dt);
+  updateCamera(dt); followSun();
   if (composer) composer.render(); else renderer.render(scene, camera);
 }
 requestAnimationFrame(frame);
