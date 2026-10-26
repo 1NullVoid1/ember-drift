@@ -15,7 +15,7 @@ const ROOT = path.resolve(__dirname, '..', '..'), THREE_DIR = process.argv[2], O
     const rel = decodeURIComponent(new URL(r.request().url()).pathname.slice(1));
     let html = fs.readFileSync(path.join(ROOT, rel || 'index.html'));
     if (!rel || rel === 'index.html') {
-      html = html.toString().replace("requestAnimationFrame(frame);\n})();", "requestAnimationFrame(frame);\nwindow.__t = { travelTo, player, show: (type, dist) => { if (window.__m) scene.remove(window.__m); const d = new THREE.Vector3(); camera.getWorldDirection(d); d.y = 0; d.normalize(); const e = buildEnemy(type); e.g.position.copy(camera.position).addScaledVector(d, dist); e.g.position.y = 0; e.g.lookAt(camera.position.x, e.g.position.y, camera.position.z); scene.add(e.g); window.__m = e.g; }, gun: (arch) => { const w = makeWeapon(ARCH[arch].slots[0], 3, 1010, { arch }); inv.equipped[w.slot] = w.uid; inv.items.push(w); player.wslot = WSLOTS.indexOf(w.slot); applyWeaponLook(); } };\n})();");
+      html = html.toString().replace("requestAnimationFrame(frame);\n})();", "requestAnimationFrame(frame);\nwindow.__t = { travelTo, player, drop: p => { const L0 = loot.length; while (loot.length === L0 || loot[loot.length - 1].item.kind !== 'weapon') { if (loot.length > L0) { scene.remove(loot.pop().g); } dropLoot(p, 1); } }, show: (type, dist) => { if (window.__m) scene.remove(window.__m); const d = new THREE.Vector3(); camera.getWorldDirection(d); d.y = 0; d.normalize(); const e = buildEnemy(type); e.g.position.copy(camera.position).addScaledVector(d, dist); e.g.position.y = 0; e.g.lookAt(camera.position.x, e.g.position.y, camera.position.z); scene.add(e.g); window.__m = e.g; }, gun: (arch) => { const w = makeWeapon(ARCH[arch].slots[0], 3, 1010, { arch }); inv.equipped[w.slot] = w.uid; inv.items.push(w); player.wslot = WSLOTS.indexOf(w.slot); applyWeaponLook(); } };\n})();");
       return r.fulfill({ body: html, contentType: 'text/html; charset=utf-8' });
     }
     r.fulfill({ body: html, contentType: rel.endsWith('.jpg') ? 'image/jpeg' : 'application/octet-stream' });
@@ -26,7 +26,7 @@ const ROOT = path.resolve(__dirname, '..', '..'), THREE_DIR = process.argv[2], O
   const pre = phone ? 'ph_' : '';
   await p.screenshot({ path: path.join(OUT, pre + 'menu.png') });
   const mode = process.argv[5];
-  const ids = mode === 'guns' || mode === 'models' ? ['steppe'] : ['tower', 'steppe', 'veyra', 'kharun'];
+  const ids = mode === 'guns' || mode === 'models' || mode === 'drops' ? ['steppe'] : ['tower', 'steppe', 'veyra', 'kharun'];
   for (const id of ids) {
     await p.evaluate(id => __t.travelTo(id), id); await p.waitForTimeout(3500);
     await p.evaluate(() => { __t.player.pitch = -0.12; }); await p.waitForTimeout(500);
@@ -42,6 +42,10 @@ const ROOT = path.resolve(__dirname, '..', '..'), THREE_DIR = process.argv[2], O
     await p.screenshot({ path: path.join(OUT, pre + 'npc_kestrel.png') });
     await p.evaluate(() => { __t.player.pos.set(0.3, 0, -12.2); __t.player.yaw = Math.PI; __t.player.pitch = 0.05; }); await p.waitForTimeout(900);
     await p.screenshot({ path: path.join(OUT, pre + 'npc_kestrel_close.png') });
+  }
+  if (mode === 'drops') {
+    await p.evaluate(() => { __t.player.pitch = -0.35; for (let k = 0; k < 6; k++) __t.drop(new THREE.Vector3(__t.player.pos.x + (k - 2.5) * 1.3, 0, __t.player.pos.z - 4.5)); });
+    await p.waitForTimeout(900); await p.screenshot({ path: path.join(OUT, pre + 'drops.png') });
   }
   if (mode === 'guns') for (const a of ['auto', 'pulse', 'hand', 'scout', 'smg', 'shotgun', 'sniper', 'rocket']) {
     await p.evaluate(a => __t.gun(a), a); await p.waitForTimeout(900);

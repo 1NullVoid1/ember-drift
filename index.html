@@ -1287,8 +1287,35 @@ function buildGunModel(w){
   FP_GRIP.L.fingers.fromArray(gd.fingers); FP_GRIP.L.palm.fromArray(gd.palm);
 }
 function shellMatFor(w){
-  gunShell.color.setHex(w.exotic ? 0xd9c48c : SHELL_BY_TIER[w.tier] || SHELL_BY_TIER[0]);
+  const pt = weaponPaint(w);
+  gunShell.color.setHex(pt[0]); gunFrame.color.setHex(pt[1]);
   gunShell.metalness = w.tier >= 3 ? 0.45 : 0.3;
+}
+// every weapon type has its own colour family and every individual gun rolls its own shade and frame colour;
+// higher rarities are richer, exotics keep a gold shell. Older saves get a stable paint from the item's id.
+const ARCH_HUE = { auto: 210, pulse: 170, hand: 28, scout: 95, smg: 275, shotgun: 2, sniper: 140, rocket: 45 };
+function weaponPaint(w){
+  if (w.paint) return w.paint;
+  let h = 0; for (const ch of String(w.uid)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+  const r = mulberry32(h), c = new THREE.Color();
+  const hue = ((ARCH_HUE[w.arch] || 0) + (r() - 0.5) * 60 + 360) % 360 / 360;
+  const sat = 0.18 + w.tier * 0.09 + r() * 0.15, lit = 0.34 + r() * 0.24;
+  const shell = w.exotic ? 0xd9c48c : c.setHSL(hue, sat, lit).getHex();
+  // the frame is either a dark neutral or a deep complementary tone
+  const frame = r() < 0.6 ? c.setHSL(hue, 0.08, 0.1 + r() * 0.08).getHex() : c.setHSL((hue + 0.45 + r() * 0.1) % 1, 0.35, 0.16 + r() * 0.08).getHex();
+  w.paint = [shell, frame];
+  return w.paint;
+}
+// a standalone copy of a weapon's model with its own paint, used for loot drops lying in the world
+function buildGunDisplay(w){
+  const g = new THREE.Group(), pt = weaponPaint(w);
+  (GUN_MODELS[w.arch] || GUN_MODELS.auto)(g);
+  const shell = gunShell.clone(), frame = gunFrame.clone(), stripe = stripeMat.clone();
+  shell.color.setHex(pt[0]); frame.color.setHex(pt[1]); stripe.emissive.setHex(ELEMENTS[w.element].c);
+  const swap = new Map([[gunShell, shell], [gunFrame, frame], [stripeMat, stripe]]);
+  g.traverse(o => { if (o.isMesh && swap.has(o.material)) o.material = swap.get(o.material); });
+  g.userData.mats = [shell, frame, stripe];
+  return g;
 }
 const muzzle = new THREE.Object3D(); muzzle.position.set(0, 0.02, -0.58); gun.add(muzzle);
 const flashMat = new THREE.MeshBasicMaterial({ color: 0xffd08a, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
@@ -2469,13 +2496,21 @@ const lootGeo = new THREE.OctahedronGeometry(0.32, 0);
 const ammoGeo = new THREE.BoxGeometry(0.5, 0.3, 0.32);
 const beamGeo = new THREE.CylinderGeometry(0.05, 0.05, 9, 6, 1, true); beamGeo.translate(0, 4.5, 0);
 function dropLoot(p, min){
-  const tier = rollRarity(min), R = RARITY[tier];
+  const tier = rollRarity(min), R = RARITY[tier], item = rollItem(tier);
   const g = new THREE.Group(); g.position.set(p.x, 0, p.z);
-  const gem = new THREE.Mesh(lootGeo, new THREE.MeshStandardMaterial({ color: R.c, emissive: R.c, emissiveIntensity: 1.6, flatShading: true }));
+  let gem;
+  if (item.kind === 'weapon') {
+    // the actual gun floats and turns above a small rarity-coloured glow
+    gem = new THREE.Group();
+    const model = buildGunDisplay(item); model.scale.setScalar(1.5); model.rotation.y = Math.PI / 2; gem.add(model);
+    const halo = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.42, 24), glowMat(R.c).clone());
+    halo.material.opacity = 0.5; halo.rotation.x = -Math.PI / 2; halo.position.y = -0.7; gem.add(halo);
+    gem.userData.mats = model.userData.mats.concat(halo.material);
+  } else gem = new THREE.Mesh(lootGeo, new THREE.MeshStandardMaterial({ color: R.c, emissive: R.c, emissiveIntensity: 1.6, flatShading: true }));
   gem.position.y = 0.8; g.add(gem);
   if (tier >= 2) { const b = new THREE.Mesh(beamGeo, glowMat(R.c).clone()); b.material.opacity = 0.35; g.add(b); }
   scene.add(g);
-  loot.push({ g, gem, tier, t: rand() * 6 });
+  loot.push({ g, gem, tier, item, t: rand() * 6 });
 }
 function dropAmmo(p){
   const g = new THREE.Group(); g.position.set(p.x + (rand() - 0.5), 0, p.z + (rand() - 0.5));
@@ -2490,7 +2525,7 @@ function pickUp(L){
     sfx.pickup(1); toastText('#b98cff', 'Power ammo', '+' + a.brick + ' ' + a.n + ' rounds');
     return;
   }
-  const item = rollItem(L.tier), R = RARITY[L.tier];
+  const item = L.item || rollItem(L.tier), R = RARITY[L.tier];
   const removed = addItem(item);
   sfx.pickup(L.tier);
   const type = item.kind === 'weapon' ? ARCH[item.arch].n : SLOT_NAMES[item.slot];
@@ -3770,7 +3805,7 @@ function updatePlayer(dt){
   // pickups
   for (let i = loot.length - 1; i >= 0; i--) {
     const L = loot[i];
-    if (Math.hypot(L.g.position.x - player.pos.x, L.g.position.z - player.pos.z) < 1.8) { pickUp(L); scene.remove(L.g); loot.splice(i, 1); }
+    if (Math.hypot(L.g.position.x - player.pos.x, L.g.position.z - player.pos.z) < 1.8) { pickUp(L); scene.remove(L.g); (L.gem.userData.mats || []).forEach(m => m.dispose()); loot.splice(i, 1); }
   }
 }
 function updateEnemies(dt){
