@@ -1,6 +1,6 @@
 """Rigs the Commander (Scott's soldier) with a simple humanoid skeleton and automatic distance-based weights.
 The game poses the bones procedurally (idle breathing, weight shifts, wrist checks).
-Usage: python3 tools/models/commander_rig.py <commander.glb> <out.glb>"""
+Usage: python3 tools/models/commander_rig.py models/commander.glb models/game/commander.glb"""
 import sys, bpy, numpy as np
 from mathutils import Vector
 src, out = sys.argv[-2:]

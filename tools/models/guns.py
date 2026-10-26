@@ -1,6 +1,6 @@
 """Prepares Scott's downloaded gun models for the game: import, apply transforms, decimate heavy meshes,
 shrink textures, export compact glb, and render a side and top preview with the bounding box printed.
-Usage: python3 tools/models/guns.py -- <input> <out.glb> <preview.png> <max_tris> <tex_px> <rot_z_deg> <length_m>
+Usage: python3 tools/models/guns.py -- <input> models/game/gun_<name>.glb <preview.png> <max_tris> <tex_px> <rot_z_deg> <length_m>
 The output is normalised for the game: barrel along blender +y (glTF -z) with the muzzle at +y, centred on its
 bounding box, scaled so its length is <length_m>."""
 import sys, bpy, math, os

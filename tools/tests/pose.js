@@ -5,11 +5,11 @@ const fs = require('fs'), path = require('path');
 const ROOT = path.resolve(__dirname, '..', '..'), THREE_DIR = process.argv[2], OUT = process.argv[3];
 const close = process.argv[4] === 'close', times = (process.argv[5] || '0,2,4,6').split(',').map(Number);
 const src = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-const glb = src.match(/<script>const COMMANDER_GLB="[^"]*";<\/script>/)[0];
+const la = src.indexOf('const glbLoader'), lb = src.indexOf('\n}\n', src.indexOf('function loadGlbShared')) + 3;
 const a = src.indexOf('// Commander Kestrel: Scott'), b = src.indexOf('function buildSoldierNpc(');
 const html = `<html><body style="margin:0;background:#333">
-<script src="http://local/three.min.js"></script><script src="http://local/GLTFLoader.js"></script>${glb}
-<script>const isTouch = false;\n${src.slice(a, b)}
+<script src="http://local/three.min.js"></script><script src="http://local/GLTFLoader.js"></script><script src="http://local/SkeletonUtils.js"></script>
+<script>const isTouch = false;\n${src.slice(la, lb).replace("'models/game/'", "'http://local/models/game/'")}\n${src.slice(a, b)}
 const R = new THREE.WebGLRenderer({ antialias: true }); R.setPixelRatio(1); R.setSize(${times.length * 260}, 760); document.body.appendChild(R.domElement);
 const S = new THREE.Scene(); S.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2)); const d = new THREE.DirectionalLight(0xffffff, 1); d.position.set(2, 4, 3); S.add(d);
 const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 50);
@@ -34,7 +34,8 @@ window.go = () => {
   await p.route('http://local/**', r => {
     const f = new URL(r.request().url()).pathname.slice(1);
     if (f === 'test.html') return r.fulfill({ body: html, contentType: 'text/html' });
-    r.fulfill({ path: path.join(THREE_DIR, f === 'three.min.js' ? 'build/three.min.js' : 'examples/js/loaders/GLTFLoader.js'), contentType: 'application/javascript' });
+    if (f.startsWith('models/')) return r.fulfill({ path: path.join(ROOT, f), contentType: 'model/gltf-binary' });
+    r.fulfill({ path: path.join(THREE_DIR, f === 'three.min.js' ? 'build/three.min.js' : f === 'SkeletonUtils.js' ? 'examples/js/utils/SkeletonUtils.js' : 'examples/js/loaders/GLTFLoader.js'), contentType: 'application/javascript' });
   });
   await p.goto('http://local/test.html'); await p.waitForTimeout(3000);
   await p.evaluate(() => go()); await p.waitForTimeout(300);
