@@ -632,6 +632,98 @@ let ARENA = 54;
 let world = new THREE.Group(); scene.add(world);
 const worldTicks = [];   // per-location animation callbacks (snow, the Ember, NPC idles)
 const floaters = [];
+// ---------- surface textures ----------
+// Seamless colour / normal / roughness maps from tools/textures/make_textures.py, projected in world space
+// (triplanar) so long walls, scaled boxes and hillsides never stretch or show UV seams.
+const texLoader = new THREE.TextureLoader();
+const texCache = {};
+const ANISO = Math.min(isTouch ? 4 : 8, renderer.capabilities.getMaxAnisotropy());
+function surfTex(name, kind){
+  const key = name + '_' + kind;
+  if (!texCache[key]) {
+    const t = texLoader.load('textures/' + key + '.jpg');
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = ANISO;
+    texCache[key] = t;
+  }
+  return texCache[key];
+}
+const TRI_VERT_DECL = 'varying vec3 vTriPos;\nvarying vec3 vTriNormal;\n';
+const TRI_VERT = `#include <worldpos_vertex>
+  vec4 triW = vec4(transformed, 1.0); vec3 triN = objectNormal;
+  #ifdef USE_INSTANCING
+    triW = instanceMatrix * triW; triN = mat3(instanceMatrix) * triN;
+  #endif
+  vTriPos = (modelMatrix * triW).xyz; vTriNormal = normalize(mat3(modelMatrix) * triN);`;
+const TRI_FRAG_DECL = `varying vec3 vTriPos;
+varying vec3 vTriNormal;
+vec3 triWeights(vec3 n){ vec3 b = pow(abs(n), vec3(4.0)); return b / (b.x + b.y + b.z); }
+vec4 triSample(sampler2D t, vec3 p, vec3 w){ return texture2D(t, p.zy) * w.x + texture2D(t, p.xz) * w.y + texture2D(t, p.xy) * w.z; }
+vec3 triNormal(sampler2D t, vec3 p, vec3 w, vec3 n, float s){
+  vec3 nx = texture2D(t, p.zy).xyz * 2.0 - 1.0, ny = texture2D(t, p.xz).xyz * 2.0 - 1.0, nz = texture2D(t, p.xy).xyz * 2.0 - 1.0;
+  // whiteout-style blend: each projection's tangent normal swizzled onto the world axes it lies across
+  return normalize(n + vec3(0.0, nx.y, nx.x) * s * w.x + vec3(ny.x, 0.0, ny.y) * s * w.y + vec3(nz.x, nz.y, 0.0) * s * w.z);
+}
+`;
+// triplanar wrapper for an ordinary MeshStandardMaterial: `scale` is world units per texture repeat
+function triMat(name, opt){
+  opt = opt || {};
+  const m = new THREE.MeshStandardMaterial({ color: opt.color === undefined ? 0xffffff : opt.color, roughness: opt.rough || 1, metalness: opt.metal || 0 });
+  m.userData.keep = true;
+  const u = { triScale: { value: 1 / (opt.scale || 4) }, triMap: { value: surfTex(name, 'color') }, triNorm: { value: surfTex(name, 'normal') }, triRough: { value: surfTex(name, 'rough') }, triBump: { value: opt.bump || 1 } };
+  m.userData.tri = u;
+  m.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, u);
+    sh.vertexShader = TRI_VERT_DECL + sh.vertexShader.replace('#include <worldpos_vertex>', TRI_VERT);
+    sh.fragmentShader = TRI_FRAG_DECL + 'uniform float triScale, triBump; uniform sampler2D triMap, triNorm, triRough;\n' + sh.fragmentShader
+      .replace('#include <map_fragment>', 'vec3 tw = triWeights(vTriNormal); vec3 tp = vTriPos * triScale; diffuseColor *= triSample(triMap, tp, tw);')
+      .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = roughness * (0.55 + 0.45 * triSample(triRough, tp, tw).g);')
+      .replace('#include <normal_fragment_maps>', 'normal = normalize((viewMatrix * vec4(triNormal(triNorm, tp, tw, normalize(vTriNormal), triBump), 0.0)).xyz);');
+  };
+  m.customProgramCacheKey = () => 'tri';
+  return m;
+}
+// terrain: flat ground texture blended into triplanar rock on slopes, sampled at two scales to hide repeats
+const terrainU = {
+  gMap: { value: null }, gNorm: { value: null }, gRough: { value: null },
+  rMap: { value: surfTex('rock', 'color') }, rNorm: { value: surfTex('rock', 'normal') }, rRough: { value: surfTex('rock', 'rough') },
+  gTint: { value: new THREE.Color() }, rTint: { value: new THREE.Color() }, gScale: { value: 1 / 4 }, rScale: { value: 1 / 14 }
+};
+const terrainMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 });
+terrainMat.userData.keep = true;
+terrainMat.onBeforeCompile = sh => {
+  Object.assign(sh.uniforms, terrainU);
+  sh.vertexShader = TRI_VERT_DECL + sh.vertexShader.replace('#include <worldpos_vertex>', TRI_VERT);
+  sh.fragmentShader = TRI_FRAG_DECL + `uniform sampler2D gMap, gNorm, gRough, rMap, rNorm, rRough; uniform vec3 gTint, rTint; uniform float gScale, rScale;\n` + sh.fragmentShader
+    .replace('#include <map_fragment>', `
+      vec3 wn = normalize(vTriNormal);
+      vec2 guv = vTriPos.xz * gScale, guv2 = vTriPos.xz * gScale * 0.23 + vec2(0.37, 0.61);
+      vec4 gc = mix(texture2D(gMap, guv), texture2D(gMap, guv2), 0.35);
+      vec3 rw = triWeights(wn); vec3 rp = vTriPos * rScale;
+      vec4 rc = triSample(rMap, rp, rw);
+      float rockAmt = smoothstep(0.9, 0.72, wn.y + (gc.r - 0.5) * 0.15);
+      diffuseColor.rgb *= mix(gc.rgb * gTint, rc.rgb * rTint, rockAmt);`)
+    .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = 0.62 + 0.38 * mix(texture2D(gRough, guv).g, triSample(rRough, rp, rw).g, rockAmt);')
+    .replace('#include <normal_fragment_maps>', `
+      vec3 gn = texture2D(gNorm, guv).xyz * 2.0 - 1.0;
+      vec3 gWorld = normalize(wn + vec3(gn.x, 0.0, -gn.y) * 0.6);
+      vec3 rWorld = triNormal(rNorm, rp, rw, wn, 1.2);
+      normal = normalize((viewMatrix * vec4(normalize(mix(gWorld, rWorld, rockAmt)), 0.0)).xyz);`);
+};
+terrainMat.customProgramCacheKey = () => 'terrain';
+// which ground each place uses, and how its rock and ground are tinted
+const SURFACES = {
+  tower:  { ground: 'gravel', g: 0x9a9098, r: 0xa8a4b0 },
+  steppe: { ground: 'gravel', g: 0xffffff, r: 0xd8b4a4 },
+  veyra:  { ground: 'snow',   g: 0xbccadf, r: 0x9aaccc },
+  kharun: { ground: 'moss',   g: 0xffffff, r: 0x8e9c80 },
+  crown:  { ground: 'ash',    g: 0xffffff, r: 0x6a5a62 }
+};
+function applySurfaces(id){
+  const s = SURFACES[id] || SURFACES.steppe;
+  terrainU.gMap.value = surfTex(s.ground, 'color'); terrainU.gNorm.value = surfTex(s.ground, 'normal'); terrainU.gRough.value = surfTex(s.ground, 'rough');
+  terrainU.gTint.value.setHex(s.g); terrainU.rTint.value.setHex(s.r);
+}
+
 function buildTerrain(W, o){
   const g = new THREE.PlaneGeometry(1000, 1000, isTouch ? 120 : 190, isTouch ? 120 : 190); g.rotateX(-Math.PI / 2);
   const pos = g.attributes.position, cols = new Float32Array(pos.count * 3);
@@ -644,25 +736,23 @@ function buildTerrain(W, o){
     let y = m * (n * 80 + m * 18) * hill + (r > ARENA + 2 ? fbm(x * 0.2, z * 0.2) * 1.2 : 0);
     if (drop) y -= smooth(ARENA, ARENA + 10, r) * drop;
     pos.setY(i, y);
-    const k = fbm(x * 0.05, z * 0.05);
-    if (r < ARENA + 2) c.copy(slab).lerp(sand, k * 0.6);
-    else c.copy(sand).lerp(rock, clamp(Math.abs(y) / 60 + k * 0.3, 0, 1));
-    cols[i*3] = c.r; cols[i*3+1] = c.g; cols[i*3+2] = c.b;
+    const k = fbm(x * 0.05, z * 0.05), b = 0.78 + k * 0.38;
+    cols[i*3] = b; cols[i*3+1] = b; cols[i*3+2] = b;
   }
   g.setAttribute('color', new THREE.BufferAttribute(cols, 3));
   g.computeVertexNormals();
-  const ground = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, flatShading: true }));
+  const ground = new THREE.Mesh(g, terrainMat);
   ground.receiveShadow = true;
   W.add(ground);
 }
 
 // ---------- shared level materials (recoloured per location) ----------
-const stoneMat = new THREE.MeshStandardMaterial({ color: 0x8c8794, roughness: 0.8, metalness: 0.15, flatShading: true });
-const metalMat = new THREE.MeshStandardMaterial({ color: 0x5e6878, roughness: 0.45, metalness: 0.6, flatShading: true });
+const stoneMat = triMat('concrete', { scale: 3.5, bump: 1.2 });
+const metalMat = triMat('metal', { scale: 2.5, metal: 0.25, rough: 0.95, bump: 0.8 });
 const trimArc = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, emissive: 0x6fd2ff, emissiveIntensity: 1.8 });
 const trimSolar = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, emissive: 0xff9a4a, emissiveIntensity: 1.8 });
 const farMat = new THREE.MeshStandardMaterial({ color: 0x3b3d52, roughness: 0.7, metalness: 0.3, flatShading: true });
-const slabMat = new THREE.MeshStandardMaterial({ color: 0x3e3a44, roughness: 1, flatShading: true });
+const slabMat = triMat('tiles', { scale: 3, color: 0x8a8490 });
 [stoneMat, metalMat, trimArc, trimSolar, farMat, slabMat].forEach(m => m.userData.keep = true);
 const colliders = [];   // {x,z,r,h}
 const solidMeshes = [];
@@ -805,7 +895,7 @@ function buildVeyra(W){
 // ---------- location: Kharun Deep ----------
 function buildKharun(W){
   buildTerrain(W, { sand: 0x3d5a33, rock: 0x45574a, slab: 0x524f45, off: 23, hill: 1.1 });
-  const bark = new THREE.MeshStandardMaterial({ color: 0x4a3426, roughness: 1, flatShading: true });
+  const bark = triMat('rock', { scale: 1.6, color: 0x9a7a5e, bump: 1.4 }); bark.userData.keep = false;
   const leaf = new THREE.MeshStandardMaterial({ color: 0x2f6a3a, roughness: 0.9, flatShading: true });
   const leaf2 = new THREE.MeshStandardMaterial({ color: 0x4f8a3a, roughness: 0.9, flatShading: true });
   scatterCover(18, stoneMat, stoneMat, [trimArc, trimSolar]);
@@ -863,16 +953,17 @@ const npcs = [];
 let emberCore = null;
 function buildTower(W){
   buildTerrain(W, { sand: 0x4a4250, rock: 0x343445, slab: 0x5a5560, off: 7, hill: 0.25, drop: 60 });
-  // plaza: tiled disc with an inlaid ember sigil
-  const tileTex = canvasTex(512, 512, (x, w, h) => {
-    x.fillStyle = '#6d6873'; x.fillRect(0, 0, w, h);
-    x.strokeStyle = 'rgba(30,26,34,.5)'; x.lineWidth = 3;
-    for (let r = 40; r < 256; r += 36) { x.beginPath(); x.arc(256, 256, r, 0, Math.PI * 2); x.stroke(); }
-    for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2; x.beginPath(); x.moveTo(256 + Math.cos(a) * 40, 256 + Math.sin(a) * 40); x.lineTo(256 + Math.cos(a) * 256, 256 + Math.sin(a) * 256); x.stroke(); }
-    x.strokeStyle = 'rgba(255,170,90,.75)'; x.lineWidth = 5;
-    x.beginPath(); for (let k = 0; k < 7; k++) { const a = k / 6 * Math.PI * 2 - Math.PI / 2; x.lineTo(256 + Math.cos(a) * 34, 256 + Math.sin(a) * 34); } x.stroke();
+  // plaza: worn stone flags with an inlaid ember sigil
+  const plazaTop = triMat('tiles', { scale: 3.2, bump: 1.1 }), plazaSide = triMat('concrete', { scale: 3, color: 0xb8b0b8 });
+  const plaza = new THREE.Mesh(new THREE.CylinderGeometry(ARENA + 1.5, ARENA + 3, 1.2, 64), [plazaSide, plazaTop, plazaSide]);
+  const sigilTex = canvasTex(512, 512, (x, w, h) => {
+    x.strokeStyle = 'rgba(255,170,90,.9)'; x.lineWidth = 10;
+    x.beginPath(); for (let k = 0; k < 7; k++) { const a = k / 6 * Math.PI * 2 - Math.PI / 2; x.lineTo(256 + Math.cos(a) * 200, 256 + Math.sin(a) * 200); } x.stroke();
+    x.lineWidth = 4; x.beginPath(); x.arc(256, 256, 236, 0, Math.PI * 2); x.stroke();
+    x.beginPath(); x.arc(256, 256, 120, 0, Math.PI * 2); x.stroke();
   });
-  const plaza = new THREE.Mesh(new THREE.CylinderGeometry(ARENA + 1.5, ARENA + 3, 1.2, 64), [new THREE.MeshStandardMaterial({ color: 0x4a4550, roughness: 0.9 }), new THREE.MeshStandardMaterial({ map: tileTex, roughness: 0.85 }), new THREE.MeshStandardMaterial({ color: 0x4a4550 })]);
+  const sigil = new THREE.Mesh(new THREE.CircleGeometry(6, 48), new THREE.MeshBasicMaterial({ map: sigilTex, transparent: true, opacity: 0.55, depthWrite: false }));
+  sigil.rotation.x = -Math.PI / 2; sigil.position.y = 0.04; W.add(sigil);
   plaza.position.y = -0.58; plaza.receiveShadow = true; W.add(plaza);
   // railing round the edge, open toward the Ember
   const rail = new THREE.Mesh(new THREE.TorusGeometry(ARENA + 0.8, 0.07, 6, 96), metalMat); rail.rotation.x = Math.PI / 2; rail.position.y = 1.05; W.add(rail);
@@ -964,7 +1055,7 @@ const LOCATIONS = {
   veyra: {
     name: 'Frostfall Reach', region: 'Veyra · Patrol', combat: true, radius: 56, spawn: [0, 0, 10], yaw: 0, build: buildVeyra, seed: 19, threat: 1.15, power: 1010,
     desc: 'A frozen moon of glass spires. Something under the ice is still transmitting.',
-    pal: { top: 0x07122a, mid: 0x22406a, hor: 0x7ab0d8, swA: 0x3a6a9a, swB: 0x6ab0d0, fog: 0x5a7898, fogD: 0.009, hemiS: 0xa8c0e0, hemiG: 0x304060, hemiI: 0.55, sun: 0xd8e8ff, sunI: 0.75, sunDir: [-0.5, 0.35, -0.8] },
+    pal: { top: 0x07122a, mid: 0x22406a, hor: 0x7ab0d8, swA: 0x3a6a9a, swB: 0x6ab0d0, fog: 0x5a7898, fogD: 0.009, hemiS: 0xa8c0e0, hemiG: 0x405878, hemiI: 0.8, sun: 0xd8e8ff, sunI: 0.75, sunDir: [-0.5, 0.35, -0.8] },
     sky: { planet: false, moon: true }, map: { x: 62, y: 22, s: 60, c: ['#ffffff', '#9fd2ff', '#2a3a6a'] }
   },
   kharun: {
@@ -980,7 +1071,7 @@ const LOCATIONS = {
     sky: { planet: false, moon: false }, map: { x: 85, y: 20, s: 76, c: ['#ffb0a0', '#c42a2a', '#1a0408'] }
   }
 };
-const STONE_BY_LOC = { tower: [0x9a93a0, 0x5e6878], steppe: [0x8c8794, 0x5e6878], veyra: [0xb8c6d8, 0x6a7a92], kharun: [0x7d8a72, 0x55604f], crown: [0x2a2430, 0x1c1a22] };
+const STONE_BY_LOC = { tower: [0xf0e8e4, 0xb8c0cc], steppe: [0xe8d8cc, 0xa8b0bc], veyra: [0xe0eaf8, 0xa8b8d0], kharun: [0xc8d4b8, 0x98a490], crown: [0x6a5e6a, 0x504a58] };
 function applyPalette(def){
   const p = def.pal, u = skyMat.uniforms;
   u.top.value.setHex(p.top); u.mid.value.setHex(p.mid); u.hor.value.setHex(p.hor); u.swA.value.setHex(p.swA); u.swB.value.setHex(p.swB);
@@ -989,7 +1080,7 @@ function applyPalette(def){
   sun.color.setHex(p.sun); sun.intensity = p.sunI;
   sunDir.fromArray(p.sunDir).normalize(); sun.position.copy(sunDir).multiplyScalar(120);
   planet.visible = ring.visible = def.sky.planet; moonGroup.visible = def.sky.moon;
-  const sc = STONE_BY_LOC[def.id] || STONE_BY_LOC.steppe; stoneMat.color.setHex(sc[0]); metalMat.color.setHex(sc[1]);
+  const sc = STONE_BY_LOC[def.id] || STONE_BY_LOC.steppe; stoneMat.color.setHex(sc[0]); metalMat.color.setHex(sc[1]); applySurfaces(def.id);
   farMat.color.setHex(new THREE.Color(p.fog).multiplyScalar(0.6).getHex());
 }
 for (const id in LOCATIONS) LOCATIONS[id].id = id;
