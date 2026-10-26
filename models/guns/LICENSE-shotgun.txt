@@ -1,0 +1,11 @@
+Model Information:
+* title:	Scifi Shotgun
+* source:	https://sketchfab.com/3d-models/scifi-shotgun-8af55ec80e4c49b4b8218eb3d6e32fab
+* author:	willdudley (https://sketchfab.com/willdudley)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Scifi Shotgun" (https://sketchfab.com/3d-models/scifi-shotgun-8af55ec80e4c49b4b8218eb3d6e32fab) by willdudley (https://sketchfab.com/willdudley) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
