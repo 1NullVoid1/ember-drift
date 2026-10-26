@@ -27,6 +27,13 @@ canvas#view{position:fixed;inset:0;width:100%;height:100%;display:block}
 /* ---------- overlays ---------- */
 .overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:40;background:radial-gradient(ellipse at 50% 120%,rgba(255,140,80,.18),transparent 60%),linear-gradient(180deg,rgba(7,8,13,.15),rgba(7,8,13,.75));padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .panel{max-width:520px;width:100%;display:grid;gap:18px}
+#deployOv .panel{max-width:760px}
+.depgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.dep{appearance:none;text-align:left;display:grid;gap:8px;align-content:start;padding:18px;border:1px solid rgba(255,255,255,.22);background:rgba(10,12,20,.72);color:var(--ink);font:400 14px/1.45 var(--body,inherit);cursor:pointer;clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px))}
+.dep b{font:700 24px/1.1 var(--display);letter-spacing:.06em;text-transform:uppercase}
+.dep span:last-child{opacity:.75}
+.dep.sel,.dep:hover{border-color:var(--ink);background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1px var(--ink)}
+@media (max-width:560px){.depgrid{grid-template-columns:1fr}}
 .title{font:700 clamp(54px,13vw,104px)/.85 var(--display);letter-spacing:.06em;text-transform:uppercase;margin:0;text-wrap:balance}
 .title small{display:block;font:600 14px/1.4 var(--display);letter-spacing:.42em;color:var(--solar);margin-bottom:10px}
 .panel p{margin:0;color:var(--dim);line-height:1.55;max-width:46ch}
@@ -563,6 +570,16 @@ body.social #tTalk.on{display:flex}
   </div>
 </div>
 
+<div class="overlay" id="deployOv" hidden>
+  <div class="panel">
+    <h2 class="title" style="font-size:52px"><small>Talos Rift</small>Choose your deployment</h2>
+    <div class="depgrid">
+      <button class="dep" id="depHangar"><span class="lbl">1 · Air</span><b>Hangar Island</b><span>Spawn by the hangar across the strait. Grab a jet off the runway and fly to the war.</span></button>
+      <button class="dep" id="depFront"><span class="lbl">2 · Ground</span><b>Front lines</b><span>Drop in at the Ember base with your squad, right where the fighting is.</span></button>
+    </div>
+  </div>
+</div>
+
 <div id="talkOv" hidden>
   <div class="talkwrap">
     <div class="talkwho"><div class="lbl" id="talkTitle">Vanguard Commander</div><b id="talkName">Rho Kestrel</b></div>
@@ -642,7 +659,10 @@ scene.add(camera);
 
 let composer = null;
 try {
-  composer = new THREE.EffectComposer(renderer);
+  // stencil on the composer target gives it a 24-bit depth buffer (the default is 16-bit, which made the
+  // sea and far coastlines flicker against each other on the big battle world)
+  const pr = renderer.getPixelRatio(), rt = new THREE.WebGLRenderTarget(innerWidth * pr, innerHeight * pr, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, stencilBuffer: true });
+  composer = new THREE.EffectComposer(renderer, rt);
   composer.addPass(new THREE.RenderPass(scene, camera));
   const bloomScale = isTouch ? 0.5 : 1;
   composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(innerWidth * bloomScale, innerHeight * bloomScale), 0.9, 0.55, 0.7));
@@ -665,7 +685,11 @@ sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.bias = -0.0008;
 scene.add(sun); scene.add(sun.target);
 // the shadow box follows the player in 8m steps so outposts get shadows too without shimmering
-function followSun(){ const x = Math.round(player.pos.x / 8) * 8, z = Math.round(player.pos.z / 8) * 8; sun.target.position.set(x, 0, z); sun.position.copy(sunDir).multiplyScalar(120).add(sun.target.position); }
+function followSun(){ const x = Math.round(player.pos.x / 8) * 8, z = Math.round(player.pos.z / 8) * 8; sun.target.position.set(x, 0, z); sun.position.copy(sunDir).multiplyScalar(120).add(sun.target.position); 
+  // the sky and the bodies in it travel with the camera, so huge worlds never reach the edge of the dome
+  const cx = camera.position.x, cz = camera.position.z;
+  sky.position.set(cx, 0, cz); planet.position.set(-520 + cx, 260, -900 + cz); ring.position.copy(planet.position); moonGroup.position.set(420 + cx, 330, -760 + cz);
+}
 
 const skyMat = new THREE.ShaderMaterial({
   uniforms: { sunDir: { value: sunDir }, top: { value: new THREE.Color(0x0a0d29) }, mid: { value: new THREE.Color(0x54336f) }, hor: { value: new THREE.Color(0xff8f5c) }, swA: { value: new THREE.Color(0x8c3899) }, swB: { value: new THREE.Color(0x3373b3) }, sunK: { value: 1 } },
@@ -877,15 +901,17 @@ function clampPlay(p, r){
 function makeZone(def){
   ZONE = { areas: [{ x: 0, z: 0, r: def.radius, main: true }], paths: [] };
   const n = def.outposts || 0, r = mulberry32(def.seed * 7919 + 13), base = r() * Math.PI * 2;
+  const Z = { gap: 105, gapVar: 55, r0: 24, rVar: 10, w: 11, bend: 1, ...def.zone };
   for (let k = 0; k < n; k++) {
-    const a = base + k / n * Math.PI * 2 + (r() - 0.5) * 0.6, d = def.radius + 105 + r() * 55, ar = 24 + r() * 10;
+    const a = base + k / n * Math.PI * 2 + (r() - 0.5) * 0.6, d = def.radius + Z.gap + r() * Z.gapVar, ar = Z.r0 + r() * Z.rVar;
     const ox = Math.cos(a) * d, oz = Math.sin(a) * d;
-    ZONE.areas.push({ x: ox, z: oz, r: ar, name: OUTPOST_NAMES[(def.seed + k) % OUTPOST_NAMES.length] });
+    ZONE.areas.push({ x: ox, z: oz, r: ar, flank: !!def.battle, name: OUTPOST_NAMES[(def.seed + k) % OUTPOST_NAMES.length] });
     // one bend halfway, pushed sideways, so paths wind instead of running dead straight
-    const bend = (r() < 0.5 ? -1 : 1) * (18 + r() * 22), mx = Math.cos(a) * d * 0.55 - Math.sin(a) * bend, mz = Math.sin(a) * d * 0.55 + Math.cos(a) * bend;
-    const w = 11 + r() * 3;
+    const bend = (r() < 0.5 ? -1 : 1) * (18 + r() * 22) * Z.bend, mx = Math.cos(a) * d * 0.55 - Math.sin(a) * bend, mz = Math.sin(a) * d * 0.55 + Math.cos(a) * bend;
+    const w = Z.w + r() * 3;
     ZONE.paths.push({ ax: Math.cos(a) * def.radius * 0.8, az: Math.sin(a) * def.radius * 0.8, bx: mx, bz: mz, w }, { ax: mx, az: mz, bx: ox, bz: oz, w });
   }
+  if (def.battle) ZONE.areas.push({ x: ISLAND.x, z: ISLAND.z, r: ISLAND.r, island: true, name: 'Hangar Island' });
 }
 const OUTPOST_NAMES = ['The Sunken Relay', 'Ashfall Yard', 'Glasswind Pass', 'The Hollow Nest', 'Cinder Gate', 'Lantern Rise', 'The Quiet Spire', 'Brokenlight Basin'];
 // terrain height at any point; scenery uses it so props sit on the slopes instead of floating
@@ -894,6 +920,8 @@ function groundY(x, z){
   const n = fbm(x * 0.011 + TERR.off, z * 0.011);
   let y = m * (n * 80 + m * 18) * TERR.hill + (d > 2 ? fbm(x * 0.2, z * 0.2) * 1.2 : 0);
   if (TERR.drop) y -= smooth(0, 10, d) * TERR.drop;
+  // worlds with a sea: hills only on the mainland, and the ground sinks under water past each coast
+  if (TERR.lands) { const h = hillsAt(x, z); y = y * h + Math.min(y, 1.5) * (1 - h); y = Math.max(TERR.floor, lerp(TERR.floor, y, landAt(x, z))); }
   return y;
 }
 // a random spot outside the walkable space (for slope scenery); gives up after a few tries
@@ -1294,9 +1322,9 @@ const LOCATIONS = {
     sky: { planet: false, moon: false }, map: { x: 85, y: 20, s: 76, c: ['#ffb0a0', '#c42a2a', '#1a0408'] }
   },
   rift: {
-    name: 'Talos Rift', region: 'Talos · Battle zone', combat: true, battle: true, radius: 168, spawn: [0, 0, 134], yaw: 0, build: buildRift, seed: 57, threat: 1, power: 1000,
-    desc: 'An open war world. Fighter jets duel overhead while two armies fight for the field below. Take a jet from the Ember pads.',
-    pal: { top: 0x0a1428, mid: 0x3a3a5a, hor: 0xe8a070, swA: 0x5a4a7a, swB: 0x3a6a9a, fog: 0x5a4a50, fogD: 0.0022, hemiS: 0xb8c4ff, hemiG: 0x5a4434, hemiI: 0.85, sun: 0xffd2a0, sunI: 1.3, sunDir: [0.5, 0.42, -0.6] },
+    name: 'Talos Rift', region: 'Talos · Battle zone', combat: true, battle: true, radius: 380, outposts: 3, zone: { gap: 180, gapVar: 80, r0: 100, rVar: 40, w: 40, bend: 3 }, spawn: [0, 0, 356], yaw: 0, build: buildRift, seed: 57, threat: 1, power: 1000,
+    desc: 'A huge open war world. Fighter jets duel over a mainland of hills, canyons and ruined flank outposts while two armies fight for the field. Deploy at the front or take off from Hangar Island.',
+    pal: { top: 0x0a1428, mid: 0x3a3a5a, hor: 0xe8a070, swA: 0x5a4a7a, swB: 0x3a6a9a, fog: 0x5a4a50, fogD: 0.0009, hemiS: 0xb8c4ff, hemiG: 0x5a4434, hemiI: 0.85, sun: 0xffd2a0, sunI: 1.3, sunDir: [0.5, 0.42, -0.6] },
     sky: { planet: true, moon: true }, map: { x: 66, y: 78, s: 66, c: ['#ffe0b8', '#a87050', '#2a1a14'] }
   }
 };
@@ -1341,11 +1369,11 @@ function buildLocation(id){
   });
   scene.remove(world); world = new THREE.Group(); scene.add(world);
   colliders.length = 0; solidMeshes.length = 0; floaters.length = 0; worldTicks.length = 0; npcs.length = 0; emberCore = null;
-  ARENA = def.radius; srand = mulberry32(def.seed);
+  ARENA = def.radius; srand = mulberry32(def.seed); TERR.lands = null; TERR.water = undefined;
   makeZone(def); outposts.length = 0;
   applyPalette(def);
   def.build(world);
-  if (def.outposts) buildOutposts(world, def);
+  if (def.outposts && !def.battle) buildOutposts(world, def);
   loc = def;
   if (def.battle) battleStart();
 }
@@ -2836,6 +2864,7 @@ function damageEnemy(e, dmg, crit, point, src){
     return false;
   }
   e.hp -= dmg; e.flash = 0.08;
+  if (e.rig && rand() < 0.6) e.rig.hit();
   if (src.kind === 'ally') { if (e.hp <= 0) killEnemy(e, { e, kind: 'ally' }); return e.hp <= 0; }
   showNum(point, dmg, crit ? 'crit' : '');
   if (src.burn) burnEnemy(e, 3);
@@ -3112,6 +3141,8 @@ function resetGame(){
 }
 $('play').addEventListener('click', startGame);
 $('respawn').addEventListener('click', () => respawnHere());
+$('depHangar').addEventListener('click', () => chooseDeploy(0));
+$('depFront').addEventListener('click', () => chooseDeploy(1));
 $('resume').addEventListener('click', resume);
 $('dirOpen').addEventListener('click', () => openDirector());
 $('goHome').addEventListener('click', () => travelTo('tower'));
@@ -3759,70 +3790,204 @@ function dirCycle(step){ const i = DIR_ORDER.indexOf(dirSel); dirSel = DIR_ORDER
 function dirTabCycle(step){ const T = ['map', 'quests', 'store']; dirTab = T[(T.indexOf(dirTab) + step + 3) % 3]; renderDirector(); }
 
 // ---------- battle troopers: rival and allied Driftwalkers on the battle world ----------
-// One light armoured soldier shape with a rifle, recoloured per team. Geometry is shared, so these live in
-// the scene (not the location group) and are never disposed with it.
-const TROOP_GEO = {
-  leg: new THREE.CylinderGeometry(0.11, 0.085, 0.86, 8).translate(0, -0.43, 0),
-  boot: new THREE.BoxGeometry(0.16, 0.12, 0.3),
-  pelvis: new THREE.BoxGeometry(0.4, 0.22, 0.26),
-  torso: new THREE.CylinderGeometry(0.26, 0.2, 0.62, 10).translate(0, 0.31, 0),
-  plate: new THREE.BoxGeometry(0.44, 0.3, 0.12),
-  pad: new THREE.SphereGeometry(0.14, 10, 8),
-  arm: new THREE.CylinderGeometry(0.075, 0.065, 0.58, 8).translate(0, -0.29, 0),
-  helm: new THREE.SphereGeometry(0.17, 14, 10),
-  visor: new THREE.BoxGeometry(0.24, 0.06, 0.07),
-  pack: new THREE.BoxGeometry(0.34, 0.42, 0.18),
-  gun: new THREE.BoxGeometry(0.08, 0.13, 0.8),
-  barrel: new THREE.CylinderGeometry(0.025, 0.025, 0.3, 6).rotateX(Math.PI / 2),
-  cape: new THREE.PlaneGeometry(0.42, 0.7).translate(0, -0.35, 0)
-};
+// A full jointed soldier (hips, spine, chest, neck, two-bone arms and legs) driven by a procedural animator:
+// the stride is paced from distance travelled so feet never skate, legs turn toward the direction of travel
+// while the chest keeps aiming (strafe and backpedal), and there are lean, bob, crouch, recoil, flinch and a
+// death fall. Geometry is shared, so these live in the scene and are never disposed with the location.
+const TROOP_GEO = (() => {
+  const G = {};
+  const cap = (r0, r1, len, seg) => new THREE.CylinderGeometry(r1, r0, len, seg || 8).translate(0, -len / 2, 0);
+  G.thigh = cap(0.105, 0.085, 0.44); G.shin = cap(0.085, 0.065, 0.43);
+  G.knee = new THREE.SphereGeometry(0.075, 8, 6);
+  G.boot = new THREE.BoxGeometry(0.15, 0.11, 0.3).translate(0, -0.03, 0.06);
+  G.pelvis = new THREE.CylinderGeometry(0.17, 0.15, 0.2, 10);
+  G.belt = new THREE.TorusGeometry(0.17, 0.025, 5, 14).rotateX(Math.PI / 2);
+  G.torso = new THREE.CylinderGeometry(0.24, 0.17, 0.46, 10).translate(0, 0.23, 0);
+  G.plate = new THREE.BoxGeometry(0.4, 0.26, 0.1);
+  G.pack = new THREE.BoxGeometry(0.32, 0.36, 0.15);
+  G.pad = new THREE.SphereGeometry(0.12, 10, 7, 0, Math.PI * 2, 0, Math.PI / 2);
+  G.upper = cap(0.065, 0.058, 0.28); G.fore = cap(0.058, 0.05, 0.26);
+  G.hand = new THREE.BoxGeometry(0.075, 0.09, 0.07);
+  G.neck = new THREE.CylinderGeometry(0.06, 0.07, 0.1, 8);
+  G.helm = new THREE.SphereGeometry(0.16, 14, 10);
+  G.visor = new THREE.BoxGeometry(0.23, 0.07, 0.08);
+  G.crest = new THREE.BoxGeometry(0.03, 0.05, 0.22);
+  G.gun = new THREE.BoxGeometry(0.075, 0.12, 0.62);
+  G.mag = new THREE.BoxGeometry(0.05, 0.16, 0.08);
+  G.stock = new THREE.BoxGeometry(0.06, 0.1, 0.2);
+  G.barrel = new THREE.CylinderGeometry(0.022, 0.022, 0.32, 6).rotateX(Math.PI / 2);
+  G.cape = new THREE.PlaneGeometry(0.4, 0.62, 1, 3).translate(0, -0.31, 0);
+  return G;
+})();
 const TEAM_LOOK = {
-  rival: { armor: 0x4a2a2c, trim: 0x8a3a34, cloth: 0x2a1416, glow: 0xff6a4a },
+  rival: { armor: 0x4a2a2c, trim: 0x9a3c34, cloth: 0x2a1416, glow: 0xff6a4a },
   ember: { armor: 0x2c3a52, trim: 0x46689a, cloth: 0x18243a, glow: 0x7fd8ff }
 };
+const _ikA = new THREE.Vector3(), _ikB = new THREE.Vector3(), _ikC = new THREE.Vector3(), _ikP = new THREE.Vector3(), _DOWN = new THREE.Vector3(0, -1, 0);
+// two-bone arm: places the upper arm and forearm (both chest children) so the hand lands on target
+function armIK(upper, fore, S, T, pole, a, b){
+  _ikA.copy(T).sub(S); let d = _ikA.length(); d = clamp(d, 0.05, a + b - 0.001); _ikA.normalize();
+  const x = (a * a - b * b + d * d) / (2 * d), h = Math.sqrt(Math.max(0, a * a - x * x));
+  _ikP.copy(pole).addScaledVector(_ikA, -pole.dot(_ikA)).normalize();
+  const E = _ikB.copy(S).addScaledVector(_ikA, x).addScaledVector(_ikP, h);
+  upper.position.copy(S); upper.quaternion.setFromUnitVectors(_DOWN, _ikC.copy(E).sub(S).normalize());
+  fore.position.copy(E); fore.quaternion.setFromUnitVectors(_DOWN, _ikC.copy(S).addScaledVector(_ikA, d).sub(E).normalize());
+}
 function buildTrooper(team){
-  const L = TEAM_LOOK[team], g = new THREE.Group(), rig = new THREE.Group(); g.add(rig);
-  const body = new THREE.MeshStandardMaterial({ color: L.armor, roughness: 0.55, metalness: 0.35 });
-  const trim = new THREE.MeshStandardMaterial({ color: L.trim, roughness: 0.5, metalness: 0.4 });
+  const L = TEAM_LOOK[team], G = TROOP_GEO, g = new THREE.Group();
+  const body = new THREE.MeshStandardMaterial({ color: L.armor, roughness: 0.5, metalness: 0.4 });
+  const trim = new THREE.MeshStandardMaterial({ color: L.trim, roughness: 0.45, metalness: 0.45 });
   const cloth = new THREE.MeshStandardMaterial({ color: L.cloth, roughness: 1, side: THREE.DoubleSide });
   const dark = new THREE.MeshStandardMaterial({ color: 0x15171c, roughness: 0.6, metalness: 0.5 });
   const glow = new THREE.MeshStandardMaterial({ color: L.glow, emissive: L.glow, emissiveIntensity: 2.2 });
-  const hips = group(rig, 0, 0.95, 0);
-  mesh(TROOP_GEO.pelvis, trim, hips);
+  const root = group(g), hips = group(root, 0, 0.96, 0);
+  mesh(G.pelvis, dark, hips); mesh(G.belt, trim, hips, 0, 0.06, 0);
   const legs = [];
   for (const sx of [-1, 1]) {
-    const leg = group(hips, sx * 0.12, -0.04, 0);
-    mesh(TROOP_GEO.leg, body, leg);
-    mesh(TROOP_GEO.boot, dark, leg, 0, -0.86, 0.05);
-    legs.push(leg);
+    const thigh = group(hips, sx * 0.1, -0.04, 0); mesh(G.thigh, body, thigh);
+    const knee = group(thigh, 0, -0.44, 0); mesh(G.knee, trim, knee, 0, 0, 0.04); mesh(G.shin, body, knee);
+    const ankle = group(knee, 0, -0.43, 0); mesh(G.boot, dark, ankle);
+    legs.push({ thigh, knee, ankle });
   }
-  const torso = group(hips, 0, 0.1, 0); torso.rotation.x = 0.08;
-  mesh(TROOP_GEO.torso, body, torso).scale.set(1, 1, 0.75);
-  mesh(TROOP_GEO.plate, trim, torso, 0, 0.36, 0.13);
-  mesh(TROOP_GEO.pack, dark, torso, 0, 0.36, -0.2);
-  mesh(TROOP_GEO.cape, cloth, torso, 0, 0.6, -0.3, 0.12);
-  for (const sx of [-1, 1]) mesh(TROOP_GEO.pad, trim, torso, sx * 0.3, 0.58, 0).scale.set(1, 0.7, 1.1);
-  const headG = group(torso, 0, 0.78, 0.02);
-  mesh(TROOP_GEO.helm, body, headG).scale.set(1, 1.05, 1.1);
-  const head = mesh(TROOP_GEO.visor, glow, headG, 0, 0.0, 0.15);
-  // rifle held across the chest: right arm on the grip, left arm under the barrel
-  const armR = group(torso, 0.3, 0.56, 0), armL = group(torso, -0.3, 0.56, 0);
-  mesh(TROOP_GEO.arm, body, armR); mesh(TROOP_GEO.arm, body, armL);
-  armR.rotation.set(-1.15, 0, -0.15); armL.rotation.set(-1.35, 0, 0.55);
-  const gunG = group(torso, 0.1, 0.36, 0.42);
-  mesh(TROOP_GEO.gun, dark, gunG); mesh(TROOP_GEO.barrel, dark, gunG, 0, 0.02, 0.52);
-  mesh(new THREE.BoxGeometry(0.02, 0.02, 0.5), glow, gunG, 0.045, 0.03, 0);
-  const tip = group(gunG, 0, 0.02, 0.7);
-  const anim = (t, spd) => {
-    const a = Math.min(1, spd / 4), ph = t * (6 + spd * 0.5);
-    legs.forEach((l, k) => { l.rotation.x = Math.sin(ph + k * Math.PI) * 0.6 * a; });
-    rig.position.y = Math.abs(Math.sin(ph)) * 0.05 * a;
-    torso.rotation.y = Math.sin(t * 1.3) * 0.05;
-    headG.rotation.y = Math.sin(t * 0.7) * 0.25 * (1 - a);
+  const spine = group(hips, 0, 0.1, 0), chest = group(spine, 0, 0.0, 0);
+  mesh(G.torso, body, chest).scale.set(1, 1, 0.78);
+  mesh(G.plate, trim, chest, 0, 0.3, 0.12);
+  mesh(G.pack, dark, chest, 0, 0.27, -0.18);
+  const cape = group(chest, 0, 0.44, -0.24); mesh(G.cape, cloth, cape);
+  for (const sx of [-1, 1]) mesh(G.pad, trim, chest, sx * 0.25, 0.43, 0, 0, 0, sx * -0.35).scale.set(1, 0.8, 1.15);
+  const neck = group(chest, 0, 0.5, 0.01); mesh(G.neck, dark, neck, 0, 0.03, 0);
+  const headG = group(neck, 0, 0.16, 0.01);
+  mesh(G.helm, body, headG).scale.set(1, 1.05, 1.12);
+  mesh(G.crest, trim, headG, 0, 0.15, -0.02);
+  const head = mesh(G.visor, glow, headG, 0, 0.0, 0.14);
+  // rifle in the chest frame; hands are solved onto the grip and the foregrip every frame
+  const gunG = group(chest, 0.1, 0.28, 0.3);
+  mesh(G.gun, dark, gunG); mesh(G.barrel, dark, gunG, 0, 0.02, 0.46); mesh(G.mag, trim, gunG, 0, -0.12, 0.08); mesh(G.stock, dark, gunG, 0, -0.01, -0.38);
+  mesh(new THREE.BoxGeometry(0.02, 0.02, 0.44), glow, gunG, 0.042, 0.03, 0.02);
+  const tip = group(gunG, 0, 0.02, 0.62);
+  const arms = [-1, 1].map(sx => {
+    const upper = group(chest), fore = group(chest);
+    mesh(G.upper, body, upper); mesh(G.fore, body, fore); mesh(G.hand, dark, fore, 0, -0.27, 0);
+    return { sx, upper, fore, S: new THREE.Vector3(sx * 0.23, 0.42, 0) };
+  });
+  const gripR = new THREE.Vector3(), gripL = new THREE.Vector3(), poleR = new THREE.Vector3(0.6, -0.8, -0.3), poleL = new THREE.Vector3(-0.8, -0.7, 0.1);
+  const A = { phase: rand(), run: 0, move: 0, legsYaw: 0, dir: 1, crouch: 0, kick: 0, flinch: 0, flinchZ: 0, aimPitch: 0, die: 0, lastYaw: null, tShift: rand() * 6 };
+  // u: { vel (world, xz), yaw (root facing), aimPitch, crouching, dt }
+  function animate(dt, vel, crouching){
+    if (A.die > 0) return dieAnim(dt);
+    const yaw = g.rotation.y;
+    const fx = Math.sin(yaw), fz = Math.cos(yaw);
+    const vf = vel.x * fx + vel.z * fz, vs = vel.x * fz - vel.z * fx, speed = Math.hypot(vel.x, vel.z);
+    // turning on the spot shuffles the feet
+    const dYaw = A.lastYaw === null ? 0 : Math.atan2(Math.sin(yaw - A.lastYaw), Math.cos(yaw - A.lastYaw)); A.lastYaw = yaw;
+    const turnStep = Math.min(1, Math.abs(dYaw) / Math.max(dt, 0.001) * 0.25);
+    A.run = lerp(A.run, smooth(2.6, 5.4, speed), Math.min(1, dt * 6));
+    A.move = lerp(A.move, Math.max(smooth(0.15, 1.1, speed), turnStep * 0.5), Math.min(1, dt * 8));
+    A.crouch = lerp(A.crouch, crouching ? 1 : 0, Math.min(1, dt * 7));
+    // legs face the way you travel, flipping to a backpedal past ~100 degrees
+    let rel = speed > 0.3 ? Math.atan2(vs, vf) : 0, dir = 1;
+    if (Math.abs(rel) > 1.75) { rel -= Math.PI * Math.sign(rel); dir = -1; }
+    A.dir = dir; A.legsYaw = lerp(A.legsYaw, clamp(rel, -1.1, 1.1), Math.min(1, dt * 8));
+    const stride = lerp(1.25, 2.3, A.run) * (1 - A.crouch * 0.35);
+    A.phase += (dir * speed * dt) / stride + turnStep * dt * 1.2;
+    const amp = lerp(0.45, 0.9, A.run) * (1 - A.crouch * 0.4), flex = lerp(0.9, 1.9, A.run);
+    const m = A.move;
+    legs.forEach((lg, k) => {
+      const ph = (A.phase + k * 0.5) * Math.PI * 2;
+      const swing = Math.max(0, Math.cos(ph));
+      const th = -Math.sin(ph) * amp * m - A.crouch * 0.95;
+      const kn = (lerp(0.12, 0.3, A.run) + Math.pow(swing, 1.3) * flex) * m + A.crouch * 1.75 + 0.06;
+      lg.thigh.rotation.x = th; lg.knee.rotation.x = kn;
+      lg.ankle.rotation.x = -(th + kn) * 0.85 + (Math.sin(ph) > 0.6 ? 0 : -0.25 * m * (1 - swing));
+      lg.thigh.rotation.z = (k ? 1 : -1) * (0.04 + A.crouch * 0.08);
+    });
+    const ph0 = A.phase * Math.PI * 2;
+    hips.position.y = 0.96 - A.crouch * 0.36 + lerp(0.025, 0.06, A.run) * m * (Math.abs(Math.sin(ph0)) - 0.5) + (1 - m) * Math.sin(time * 1.6 + A.tShift) * 0.006;
+    hips.rotation.y = A.legsYaw + Math.sin(ph0) * 0.14 * m;
+    hips.rotation.z = Math.sin(ph0) * 0.05 * m + (1 - m) * Math.sin(time * 0.6 + A.tShift) * 0.03;
+    // chest counter-turns to keep aiming, leans into the run, takes recoil and flinches
+    A.kick = Math.max(0, A.kick - dt * 9); A.flinch = Math.max(0, A.flinch - dt * 4);
+    spine.rotation.y = -hips.rotation.y;
+    spine.rotation.x = (dir > 0 ? 0.06 + A.run * 0.24 * m : -0.06 * m) + A.crouch * 0.18 - A.flinch * 0.35 - A.kick * 0.05;
+    spine.rotation.z = -hips.rotation.z * 0.6 + A.flinch * A.flinchZ;
+    chest.rotation.x = A.aimPitch * 0.6 + Math.sin(time * 1.6 + A.tShift) * 0.015;
+    chest.rotation.y = -Math.sin(ph0) * 0.06 * m;
+    neck.rotation.x = -spine.rotation.x * 0.7 + A.aimPitch * 0.4;
+    headG.rotation.y = (1 - m) * Math.sin(time * 0.5 + A.tShift) * 0.15;
+    cape.rotation.x = 0.1 + m * (0.25 + A.run * 0.4) + Math.sin(time * 4 + A.tShift) * 0.05 * m;
+    // rifle bobs with the steps and kicks when fired; sprinting carries it lower
+    const carry = A.run * m * (1 - A.crouch);
+    gunG.position.set(0.1 - carry * 0.04, 0.28 - carry * 0.08 + Math.sin(ph0 * 2) * 0.012 * m, 0.3 - A.kick * 0.07);
+    gunG.rotation.set(carry * 0.35 - A.kick * 0.12, -carry * 0.25, carry * 0.2);
+    gunG.updateMatrix();
+    gripR.set(0, -0.08, -0.12).applyMatrix4(gunG.matrix); gripL.set(0, -0.05, 0.2).applyMatrix4(gunG.matrix);
+    armIK(arms[1].upper, arms[1].fore, arms[1].S, gripR, poleR, 0.28, 0.27);
+    armIK(arms[0].upper, arms[0].fore, arms[0].S, gripL, poleL, 0.28, 0.27);
+  }
+  function dieAnim(dt){
+    A.die += dt;
+    const k1 = smooth(0, 0.35, A.die), k2 = smooth(0.25, 0.95, A.die);
+    legs.forEach((lg, k) => { lg.thigh.rotation.x = lerp(lg.thigh.rotation.x, -1.3 + k * 0.4, k1); lg.knee.rotation.x = lerp(lg.knee.rotation.x, 1.9 - k * 0.6, k1); });
+    hips.position.y = lerp(0.96, 0.32, k1);
+    spine.rotation.x = lerp(0.1, -0.5, k2); spine.rotation.z = A.flinchZ * 0.8 * k2;
+    root.rotation.x = -1.35 * k2 * k2; root.position.y = 0.05 * k2; root.position.z = -0.25 * k2;
+    neck.rotation.x = -0.5 * k2;
+    gunG.rotation.x = lerp(gunG.rotation.x, 1.2, k1); gunG.position.y = lerp(gunG.position.y, 0.05, k2);
+    if (A.die > 2.6) root.position.y = -(A.die - 2.6) * 0.6;
+    gunG.updateMatrix();
+    gripR.set(0, -0.08, -0.12).applyMatrix4(gunG.matrix);
+    armIK(arms[1].upper, arms[1].fore, arms[1].S, gripR, poleR, 0.28, 0.27);
+    arms[0].upper.rotation.set(-0.4 * k2, 0, 1.0 * k2); arms[0].upper.position.copy(arms[0].S);
+    arms[0].fore.position.set(-0.23 - 0.24 * k2, 0.42 - 0.18, 0.05); arms[0].fore.rotation.set(-0.3, 0, 0.6 * k2);
+  }
+  const rig = {
+    animate,
+    fire(){ A.kick = 1; },
+    hit(){ A.flinch = 1; A.flinchZ = (rand() - 0.5) * 0.6; },
+    kill(){ if (!A.die) { A.die = 0.001; A.flinchZ = (rand() - 0.5) * 0.8; } },
+    aim(p){ A.aimPitch = lerp(A.aimPitch, clamp(p, -0.6, 0.6), 0.2); },
+    get dying(){ return A.die; }
   };
   const parts = [];
-  g.traverse(o => { if (o.isMesh) { parts.push(o); o.castShadow = true; o.userData.crit = o === head; } });
-  return { g, parts, body, glow, head, tip, shield: null, anim };
+  const shadows = !isTouch;
+  g.traverse(o => { if (o.isMesh) { parts.push(o); o.castShadow = shadows; o.userData.crit = o === head; } });
+  animate(0.016, new THREE.Vector3(), false);
+  return { g, parts, body, glow, head, tip, shield: null, rig, anim: () => {} };
+}
+// shared brain for soldiers on both sides: keep a fighting distance, strafe, crouch to shoot, push the lane
+function soldierStep(u, dt, tgt, goal, speed, onShoot){
+  u.cd -= dt; u.strafeT -= dt; u.stanceT = (u.stanceT || 0) - dt;
+  if (u.strafeT <= 0) { u.strafe = rand() < 0.5 ? -1 : 1; u.strafeT = 1.2 + rand() * 2.2; }
+  if (u.stanceT <= 0) { u.stanceT = 1.5 + rand() * 2.5; u.hold = rand() < 0.4; }
+  const want = new THREE.Vector3(); let face = null, crouch = false;
+  if (tgt) {
+    const to = tgt.pos.clone().sub(u.pos); to.y = 0; const d = to.length(); to.normalize(); face = to;
+    if (d > 30) want.copy(to).multiplyScalar(speed);
+    else if (d < 12) want.copy(to).multiplyScalar(-speed * 0.6);
+    else if (u.hold) crouch = true;
+    if (!crouch) want.addScaledVector(new THREE.Vector3(-to.z, 0, to.x), u.strafe * speed * (d > 30 ? 0.25 : 0.55));
+    if (u.cd <= 0 && (!u.born || u.born >= 1)) { u.cd = 0.75 + rand() * 0.8; onShoot(); u.rig.fire(); }
+    const ty = (tgt.head ? tgt.head.getWorldPosition(tmpV).y : 1.5) - 1.5; u.rig.aim(Math.atan2(ty, d));
+  } else if (goal) {
+    const g2 = goal.clone().sub(u.pos); g2.y = 0;
+    if (g2.length() > 8) { g2.normalize(); want.copy(g2).multiplyScalar(speed * 1.15); face = g2; }
+    u.rig.aim(0);
+  }
+  // smooth velocity and turning so nobody snaps around
+  if (!u.vel) u.vel = new THREE.Vector3();
+  u.vel.lerp(want, Math.min(1, dt * 6));
+  return { face, crouch };
+}
+function soldierMove(u, dt, face, crouch, others, radius){
+  for (const o of others) { if (o === u || o.dead) continue; const dx = u.pos.x - o.pos.x, dz = u.pos.z - o.pos.z, dd = Math.hypot(dx, dz); if (dd < radius * 2.6 && dd > 0.001) { u.pos.x += dx / dd * 2.5 * dt; u.pos.z += dz / dd * 2.5 * dt; } }
+  u.pos.addScaledVector(u.vel, dt); collide(u.pos, radius);
+  u.g.position.set(u.pos.x, 0, u.pos.z);
+  const fy = face ? Math.atan2(face.x, face.z) : u.vel.lengthSq() > 0.5 ? Math.atan2(u.vel.x, u.vel.z) : u.g.rotation.y;
+  u.g.rotation.y += clamp(Math.atan2(Math.sin(fy - u.g.rotation.y), Math.cos(fy - u.g.rotation.y)), -7 * dt, 7 * dt);
+  // only animate soldiers you might see; far ones just slide along
+  const dc = camera.position.distanceTo(u.g.position);
+  u.g.visible = dc < 420;
+  if (dc < 160 || (u.animSkip = ((u.animSkip || 0) + 1) % 3) === 0) u.rig.animate(dc < 160 ? dt : dt * 3, u.vel, crouch);
 }
 
 // ---------- battle world: fighter jets overhead, two armies on the ground ----------
@@ -3831,8 +3996,10 @@ function buildTrooper(team){
 // be flown; AI jets from both sides dogfight above the field. All of it lives in the scene (shared geometry)
 // and battleClear() takes it down when you leave.
 const BATTLE = { score: { ember: 0, rival: 0 }, goal: 60, jets: [], allies: [], missiles: [], pads: [], pillars: [], spawnT: 0, respawn: { ember: 0, rival: 0 }, active: false };
-const EMBER_BASE = { x: 0, z: 122 }, RIVAL_BASE = { x: 0, z: -122 };
-const JET_PADS = [[-34, 146], [0, 152], [34, 146]];
+const EMBER_BASE = { x: 0, z: 330 }, RIVAL_BASE = { x: 0, z: -330 };
+// Hangar Island sits out across the strait behind the Ember lines; more jets wait at the front-line base
+const ISLAND = { x: 0, z: 1850, r: 170 };
+const JET_PADS = [[-45, 1770], [-15, 1770], [15, 1770], [45, 1770]], FRONT_PADS = [[-70, 360], [70, 360]];
 
 // jet model: forward is -Z like the camera. One geometry set shared by every jet.
 const JET_GEO = (() => {
@@ -3899,7 +4066,7 @@ function spawnJet(team, opts){
   else {
     // AI jets join from their side of the map, already at speed
     const side = team === 'ember' ? 1 : -1, a = (rand() - 0.5) * 1.6;
-    j.pos.set(Math.sin(a) * 420, 150 + rand() * 90, side * Math.cos(a) * 420);
+    j.pos.set(Math.sin(a) * 900, 150 + rand() * 90, side * Math.cos(a) * 900);
     const toC = new THREE.Vector3(-j.pos.x, 0, -j.pos.z).normalize();
     j.q.setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), toC, UP));
     j.vel.copy(toC).multiplyScalar(j.speed);
@@ -3950,39 +4117,108 @@ function addPillar(W, x, z, r, h, mat){
 function pillarAt(x, y, z){ for (const p of BATTLE.pillars) if (y < p.top && Math.hypot(x - p.x, z - p.z) < p.r) return p; return null; }
 
 // ---------- location: the battle world ----------
+// A mainland (central battlefield, three flank zones in the canyons, hills and rock spires) and, across a
+// strait, Hangar Island where the jets live. The sea is a hard floor for aircraft.
 function buildRift(W){
-  buildTerrain(W, { sand: 0x7a6248, rock: 0x4f4a58, slab: 0x5a5560, off: 23, hill: 1.35, size: 1700 });
+  TERR.lands = [{ x: 0, z: 0, r0: 1020, r1: 1260, hills: 1 }, { x: ISLAND.x, z: ISLAND.z, r0: ISLAND.r + 30, r1: ISLAND.r + 150, hills: 0 }];
+  TERR.floor = -150; TERR.water = -2;
+  buildTerrain(W, { sand: 0x7a6248, rock: 0x4f4a58, slab: 0x5a5560, off: 23, hill: 1.3, size: 4400 });
+  // the sea
+  const waveTex = canvasTex(256, 256, (x, w, h) => { const id = x.createImageData(w, h); for (let i = 0; i < w * h; i++) { const v = 110 + fbm((i % w) * 0.06, Math.floor(i / w) * 0.06) * 120; id.data[i * 4] = id.data[i * 4 + 1] = id.data[i * 4 + 2] = v; id.data[i * 4 + 3] = 255; } x.putImageData(id, 0, 0); });
+  waveTex.wrapS = waveTex.wrapT = THREE.RepeatWrapping; waveTex.repeat.set(160, 160);
+  const seaMat = new THREE.MeshStandardMaterial({ color: 0x1d3b55, roughness: 0.55, metalness: 0.3, bumpMap: waveTex, bumpScale: 0.6, transparent: true, opacity: 0.93 });
+  if (envRT) { seaMat.envMap = envRT.texture; seaMat.envMapIntensity = 0.9; }
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000).rotateX(-Math.PI / 2), seaMat); sea.position.y = TERR.water; sea.receiveShadow = true; W.add(sea);
+  worldTicks.push(dt => { waveTex.offset.x += dt * 0.004; waveTex.offset.y += dt * 0.0025; });
   BATTLE.pillars.length = 0;
   const rockMat = triMat('concrete', { scale: 6, color: 0x6a5a52, bump: 1.6 }); rockMat.userData.keep = false;
-  for (let i = 0; i < 26; i++) {
-    const s = sceneryAt(230, 420, 30); if (!s) continue;
-    addPillar(W, s.x, s.z, 9 + srand() * 14, 60 + srand() * 110, rockMat);
+  for (let i = 0; i < 60; i++) {
+    const s = sceneryAt(430, 560, 40); if (!s || landAt(s.x, s.z) < 0.9) continue;
+    addPillar(W, s.x, s.z, 10 + srand() * 18, 70 + srand() * 140, rockMat);
   }
-  // two bases facing each other across the field
+  // the two front-line bases facing each other across the central field
   for (const [b, trim] of [[EMBER_BASE, trimArc], [RIVAL_BASE, trimSolar]]) {
     const s = Math.sign(b.z);
-    addBlock(b.x - 26, b.z - s * 8, 18, 3.2, 2, 0, metalMat, trim);
-    addBlock(b.x + 26, b.z - s * 8, 18, 3.2, 2, 0, metalMat, trim);
-    addBlock(b.x - 40, b.z + s * 6, 2.4, 9, 2.4, 0, stoneMat, trim);
-    addBlock(b.x + 40, b.z + s * 6, 2.4, 9, 2.4, 0, stoneMat, trim);
-    addBlock(b.x, b.z + s * 4, 10, 6, 6, 0, stoneMat, trim);
-    const beacon = glowSprite(trim === trimArc ? 0x6fd2ff : 0xff6a4a, 30); beacon.position.set(b.x, 20, b.z + s * 4); W.add(beacon);
-    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 18, 8), metalMat); mast.position.set(b.x, 15, b.z + s * 4); W.add(mast);
+    for (const sx of [-1, 1]) {
+      addBlock(b.x + sx * 34, b.z - s * 10, 26, 3.4, 2.2, 0, metalMat, trim);
+      addBlock(b.x + sx * 62, b.z + s * 4, 2.6, 12, 2.6, 0, stoneMat, trim);
+      addBlock(b.x + sx * 16, b.z + s * 18, 12, 7, 8, 0, stoneMat, trim);
+    }
+    addBlock(b.x, b.z + s * 6, 12, 8, 8, 0, stoneMat, trim);
+    const beacon = glowSprite(trim === trimArc ? 0x6fd2ff : 0xff6a4a, 40); beacon.position.set(b.x, 30, b.z + s * 6); W.add(beacon);
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.8, 26, 8), metalMat); mast.position.set(b.x, 21, b.z + s * 6); W.add(mast);
   }
-  // runway pads for the jets
-  JET_PADS.forEach(([x, z]) => {
-    const pad = new THREE.Mesh(new THREE.BoxGeometry(18, 0.1, 22), slabMat); pad.position.set(x, 0.05, z); pad.receiveShadow = true; W.add(pad);
-    for (const sx of [-1, 1]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.12, 20), trimArc); l.position.set(x + sx * 8.6, 0.07, z); W.add(l); }
+  // cover all across the central field: walls, barricades and a few tall ruins
+  for (let i = 0; i < 110; i++) {
+    const a = srand() * Math.PI * 2, d = 20 + srand() * (ARENA - 30), x = Math.cos(a) * d, z = Math.sin(a) * d;
+    if (Math.abs(Math.abs(z) - Math.abs(EMBER_BASE.z)) < 30 && Math.abs(x) < 80) continue;
+    const tall = srand() < 0.18;
+    addBlock(x, z, tall ? 3 : 4 + srand() * 7, tall ? 7 + srand() * 10 : 1.4 + srand() * 1.4, tall ? 3 : 1.2 + srand() * 1.4, srand() * Math.PI, srand() < 0.5 ? stoneMat : metalMat, tall ? (z > 0 ? trimArc : trimSolar) : null);
+  }
+  // flank zones out in the canyons: a ruined outpost each with a landmark tower
+  ZONE.areas.filter(a => a.flank).forEach((a, k) => {
+    for (let i = 0; i < 16; i++) {
+      const aa = srand() * Math.PI * 2, d = 8 + srand() * (a.r - 14);
+      addBlock(a.x + Math.cos(aa) * d, a.z + Math.sin(aa) * d, 3 + srand() * 6, 1.4 + srand() * (srand() < 0.2 ? 9 : 1.6), 1.4 + srand() * 2, srand() * Math.PI, srand() < 0.5 ? stoneMat : metalMat, null);
+    }
+    addBlock(a.x, a.z, 7, 26, 7, srand(), stoneMat, k % 2 ? trimSolar : trimArc);
+    const g = glowSprite(0xffd28a, 34); g.position.set(a.x, 32, a.z); W.add(g);
   });
-  // trenches of cover across the middle of the field
-  for (let i = 0; i < 34; i++) {
-    const x = (srand() - 0.5) * 230, z = (srand() - 0.5) * 170;
-    if (Math.hypot(x, z) > 150) continue;
-    const tall = srand() < 0.25;
-    addBlock(x, z, tall ? 2.6 : 4 + srand() * 5, tall ? 6 + srand() * 6 : 1.4 + srand() * 1.2, tall ? 2.6 : 1.2 + srand() * 1.2, srand() * Math.PI, srand() < 0.5 ? stoneMat : metalMat, tall ? (x < 0 ? trimArc : trimSolar) : null);
-  }
-  arenaSlabs(W, 30);
+  // paved roads from the field out to each flank zone
+  const roadPts = [];
+  for (const p of ZONE.paths) { const L = Math.hypot(p.bx - p.ax, p.bz - p.az), n = Math.floor(L / 9); for (let i = 0; i <= n; i++) roadPts.push({ x: lerp(p.ax, p.bx, i / n), y: 0.04, z: lerp(p.az, p.bz, i / n), ry: Math.atan2(p.bx - p.ax, p.bz - p.az) }); }
+  instanced(W, new THREE.BoxGeometry(12, 0.1, 8.6), slabMat, roadPts).receiveShadow = true;
+  // Hangar Island: an open arched hangar, runway pads and lights
+  const I = ISLAND;
+  const hangar = new THREE.Mesh(new THREE.CylinderGeometry(24, 24, 52, 28, 1, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2), metalMat.clone());
+  hangar.material.side = THREE.DoubleSide; hangar.material.userData.keep = false; hangar.position.set(I.x, 0, I.z + 126); hangar.castShadow = hangar.receiveShadow = true; W.add(hangar);
+  const ribs = []; for (let k = 0; k < 6; k++) ribs.push({ x: I.x, y: 0, z: I.z + 102 + k * 9.6 });
+  instanced(W, new THREE.TorusGeometry(24.2, 0.5, 6, 28, Math.PI), trimArc, ribs);
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(48, 0.1, 52), slabMat); floor.position.set(I.x, 0.05, I.z + 126); floor.receiveShadow = true; W.add(floor);
+  addBlock(I.x, I.z + 152, 48, 22, 1, 0, metalMat, trimArc);
+  addBlock(I.x - 70, I.z + 60, 8, 22, 8, 0.3, stoneMat, trimArc);
+  addBlock(I.x + 70, I.z + 40, 14, 4, 6, -0.2, metalMat, null);
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(110, 0.08, 230), slabMat); strip.position.set(I.x, 0.03, I.z - 20); strip.receiveShadow = true; W.add(strip);
+  const lights = []; for (let k = 0; k < 18; k++) for (const sx of [-1, 1]) lights.push({ x: I.x + sx * 56, y: 0.2, z: I.z + 90 - k * 13 });
+  instanced(W, new THREE.BoxGeometry(0.6, 0.4, 0.6), trimArc, lights);
+  const tower = glowSprite(0x6fd2ff, 30); tower.position.set(I.x - 70, 26, I.z + 60); W.add(tower);
+  JET_PADS.concat(FRONT_PADS).forEach(([x, z]) => {
+    const pad = new THREE.Mesh(new THREE.BoxGeometry(18, 0.1, 22), slabMat); pad.position.set(x, 0.06, z); pad.receiveShadow = true; W.add(pad);
+    for (const sx of [-1, 1]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.12, 20), trimArc); l.position.set(x + sx * 8.6, 0.08, z); W.add(l); }
+  });
+  arenaSlabs(W, 60);
   ambientParticles(W, 120, 0xffc890, 0.1, -0.4, 0.5);
+}
+// 1 on land, 0 out at sea (used for the coastline and to keep scenery on land)
+function landAt(x, z){
+  if (!TERR.lands) return 1;
+  let k = 0;
+  for (const L of TERR.lands) { const a = Math.atan2(z - L.z, x - L.x), wob = 1 + 0.08 * Math.sin(a * 3 + 1) + 0.05 * Math.sin(a * 7); k = Math.max(k, 1 - smooth(L.r0 * wob, L.r1 * wob, Math.hypot(x - L.x, z - L.z))); }
+  return k;
+}
+function hillsAt(x, z){
+  if (!TERR.lands) return 1;
+  let k = 0; for (const L of TERR.lands) if (L.hills) k = Math.max(k, 1 - smooth(L.r0 * 0.8, L.r0, Math.hypot(x - L.x, z - L.z)));
+  return k;
+}
+// ground for aircraft: the terrain, or the sea surface where that is higher
+const airFloor = (x, z) => TERR.water !== undefined ? Math.max(groundY(x, z), TERR.water) : groundY(x, z);
+// deployment choice on arrival (and after each death) on the battle world
+let deploySel = 0;
+function openDeploy(){
+  state = 'deploy'; firing = false; mouseFiring = false; adsHeld = false;
+  if (document.exitPointerLock && locked) document.exitPointerLock();
+  show('hud', false); show('touch', false); show('deployOv', true); markDeploy();
+}
+function markDeploy(){ ['depHangar', 'depFront'].forEach((id, i) => $(id).classList.toggle('sel', i === deploySel)); }
+function chooseDeploy(i){
+  if (state !== 'deploy') return;
+  deploySel = i; show('deployOv', false);
+  if (i === 0) { player.pos.set(ISLAND.x, 0, ISLAND.z + 92); player.yaw = 0; }
+  else { player.pos.set(EMBER_BASE.x + (rand() - 0.5) * 20, 0, EMBER_BASE.z + 26); player.yaw = 0; }
+  player.vel.set(0, 0, 0); player.pitch = 0; player.hp = 100;
+  state = 'play'; last = performance.now(); show('hud', true); show('touch', isTouch); requestLock(); initAudio();
+  wisp(i === 0 ? 'Hangar Island. Take a jet off the pads and fly south across the strait. The front is about two kilometres out.' : 'Front lines. Rivals hold the far side of the field. Push with your squad.');
 }
 
 // ---------- start and stop ----------
@@ -3991,16 +4227,16 @@ function battleClear(){
   for (const a of BATTLE.allies) scene.remove(a.g);
   for (const m of BATTLE.missiles) scene.remove(m.m);
   BATTLE.jets.length = 0; BATTLE.allies.length = 0; BATTLE.missiles.length = 0; BATTLE.pads.length = 0;
-  if (player.jet) { player.jet = null; document.body.classList.remove('flying'); }
+  if (player.jet) { player.jet = null; setNear(0.05); document.body.classList.remove('flying'); }
   BATTLE.active = false; show('bScore', false);
 }
 function battleStart(){
   battleClear();
   BATTLE.active = true; BATTLE.score.ember = BATTLE.score.rival = 0; BATTLE.spawnT = 0;
-  JET_PADS.forEach(([x, z]) => { const pad = { x, z, t: 0 }; BATTLE.pads.push(pad); spawnJet('ember', { pad }); });
+  JET_PADS.concat(FRONT_PADS).forEach(([x, z]) => { const pad = { x, z, t: 0 }; BATTLE.pads.push(pad); spawnJet('ember', { pad }); });
   for (let i = 0; i < 3; i++) spawnJet('ember', {});
   for (let i = 0; i < 3; i++) spawnJet('rival', {});
-  for (let i = 0; i < 4; i++) spawnAlly(true);
+  for (let i = 0; i < 6; i++) spawnAlly(true);
   show('bScore', true); renderScore();
 }
 function renderScore(){ $('bsE').textContent = BATTLE.score.ember; $('bsR').textContent = BATTLE.score.rival; }
@@ -4018,80 +4254,49 @@ function battleScore(team, n){
 // ---------- allied soldiers ----------
 function spawnAlly(spread){
   const m = buildTrooper('ember');
-  const a = { ...m, pos: new THREE.Vector3(EMBER_BASE.x + (rand() - 0.5) * 40, 0, EMBER_BASE.z - 10 - rand() * (spread ? 60 : 8)), hp: 110, maxHp: 110, cd: 1 + rand(), strafe: rand() < 0.5 ? 1 : -1, strafeT: 0, target: null, retarget: 0, dead: 0, lane: (rand() - 0.5) * 140 };
-  a.g.position.copy(a.pos); scene.add(a.g); BATTLE.allies.push(a);
+  const a = { ...m, pos: new THREE.Vector3(EMBER_BASE.x + (rand() - 0.5) * 60, 0, EMBER_BASE.z - 10 - rand() * (spread ? 120 : 10)), hp: 110, maxHp: 110, cd: 1 + rand(), strafe: 1, strafeT: 0, target: null, retarget: 0, dead: 0, lane: (rand() - 0.5) * 2 * BATTLE_LANE };
+  a.g.position.copy(a.pos); a.g.rotation.y = Math.PI; scene.add(a.g); BATTLE.allies.push(a);
 }
 function hurtAlly(a, d){
   if (a.dead) return;
-  a.hp -= d; if (a.hp <= 0) { a.dead = 0.001; burst(a.pos.clone().setY(1.4), 0x7fd8ff, 12, 5); battleScore('rival', 1); }
+  a.hp -= d; if (rand() < 0.5) a.rig.hit();
+  if (a.hp <= 0) { a.dead = 0.001; a.rig.kill(); battleScore('rival', 1); }
 }
+const BATTLE_LANE = 260;
 function updateAllies(dt){
   const rivals = enemies.filter(e => !e.dead && e.type === 'rival');
   for (let i = BATTLE.allies.length - 1; i >= 0; i--) {
     const a = BATTLE.allies[i];
-    if (a.dead) { a.dead += dt; a.g.rotation.x = -Math.min(1.5, a.dead * 4); if (a.dead > 1.2) { scene.remove(a.g); BATTLE.allies.splice(i, 1); } continue; }
+    if (a.dead) { a.dead += dt; a.rig.animate(dt, a.vel || new THREE.Vector3(), false); if (a.dead > 3.4) { scene.remove(a.g); BATTLE.allies.splice(i, 1); } continue; }
     a.retarget -= dt;
     if (a.retarget <= 0 || !a.target || a.target.dead) {
-      a.retarget = 0.8 + rand() * 0.6; a.target = null; let bd = 95;
+      a.retarget = 0.8 + rand() * 0.6; a.target = null; let bd = 110;
       for (const e of rivals) { const d = e.pos.distanceTo(a.pos); if (d < bd) { bd = d; a.target = e; } }
     }
-    const mv = new THREE.Vector3(); let face = null;
-    a.cd -= dt; a.strafeT -= dt; if (a.strafeT <= 0) { a.strafe *= -1; a.strafeT = 1.2 + rand() * 2; }
-    if (a.target) {
-      const to = a.target.pos.clone().sub(a.pos); to.y = 0; const d = to.length(); to.normalize(); face = to;
-      if (d > 26) mv.copy(to).multiplyScalar(5); else if (d < 12) mv.copy(to).multiplyScalar(-4);
-      mv.addScaledVector(new THREE.Vector3(-to.z, 0, to.x), a.strafe * 3);
-      if (a.cd <= 0) {
-        a.cd = 0.7 + rand() * 0.7;
-        const from = a.tip.getWorldPosition(new THREE.Vector3()), at = a.target.head.getWorldPosition(new THREE.Vector3());
-        if (hasLOS(from, at)) {
-          const hitIt = rand() < 0.42;
-          if (!hitIt) at.add(new THREE.Vector3((rand() - 0.5) * 2, (rand() - 0.5) * 1.5, (rand() - 0.5) * 2));
-          tracer(from, at, 0x7fd8ff);
-          if (hitIt) damageEnemy(a.target, 15, false, at, { kind: 'ally' });
-        }
-      }
-    } else {
-      // push up the field along their lane toward the Rival base
-      const goal = new THREE.Vector3(a.lane, 0, RIVAL_BASE.z + 30).sub(a.pos); goal.y = 0;
-      if (goal.length() > 6) { goal.normalize(); mv.copy(goal).multiplyScalar(4.2); face = goal; }
-    }
-    for (const o of BATTLE.allies) { if (o === a || o.dead) continue; const dx = a.pos.x - o.pos.x, dz = a.pos.z - o.pos.z, dd = Math.hypot(dx, dz); if (dd < 1.4 && dd > 0.001) { mv.x += dx / dd * 3; mv.z += dz / dd * 3; } }
-    a.pos.addScaledVector(mv, dt); collide(a.pos, 0.45);
-    a.g.position.set(a.pos.x, 0, a.pos.z);
-    if (face) a.g.rotation.y = Math.atan2(face.x, face.z);
-    a.anim(time, Math.hypot(mv.x, mv.z));
+    const { face, crouch } = soldierStep(a, dt, a.target, new THREE.Vector3(a.lane, 0, RIVAL_BASE.z + 40), 5, () => {
+      const from = a.tip.getWorldPosition(new THREE.Vector3()), at = a.target.head.getWorldPosition(new THREE.Vector3());
+      if (!hasLOS(from, at)) return;
+      const hitIt = rand() < 0.4;
+      if (!hitIt) at.add(new THREE.Vector3((rand() - 0.5) * 2, (rand() - 0.5) * 1.5, (rand() - 0.5) * 2));
+      tracer(from, at, 0x7fd8ff);
+      if (hitIt) damageEnemy(a.target, 15, false, at, { kind: 'ally' });
+    });
+    soldierMove(a, dt, face, crouch, BATTLE.allies, 0.45);
   }
 }
 // rival soldiers: called from updateEnemies, aims at the nearest of you and your allies
 function rivalAI(e, dt, i){
-  let tgt = null, bd = 90, isPlayer = false;
+  let tgt = null, bd = 100, isPlayer = false;
   if (!player.jet && !player.eject) { const d = Math.hypot(player.pos.x - e.pos.x, player.pos.z - e.pos.z); if (d < bd) { bd = d; tgt = player; isPlayer = true; } }
   for (const a of BATTLE.allies) { if (a.dead) continue; const d = a.pos.distanceTo(e.pos); if (d < bd - (isPlayer ? 6 : 0)) { bd = d; tgt = a; isPlayer = false; } }
-  const mv = new THREE.Vector3(); let face;
-  e.cd -= dt; e.strafeT -= dt; if (e.strafeT <= 0) { e.strafe *= -1; e.strafeT = 1.2 + rand() * 2; }
-  if (tgt) {
-    const to = tgt.pos.clone().sub(e.pos); to.y = 0; const d = to.length(); to.normalize(); face = to;
-    if (d > 28) mv.copy(to).multiplyScalar(e.s.speed); else if (d < 13) mv.copy(to).multiplyScalar(-e.s.speed * 0.8);
-    mv.addScaledVector(new THREE.Vector3(-to.z, 0, to.x), e.strafe * 3);
-    if (e.cd <= 0 && e.born >= 1) {
-      e.cd = 0.9 + rand() * 0.9;
-      if (isPlayer) enemyFire(e, 8, 34, 0.06);
-      else {
-        const from = e.tip.getWorldPosition(new THREE.Vector3()), at = tgt.head.getWorldPosition(new THREE.Vector3());
-        if (hasLOS(from, at)) { const hitIt = rand() < 0.4; if (!hitIt) at.x += (rand() - 0.5) * 2.5; tracer(from, at, 0xff6a4a); if (hitIt) hurtAlly(tgt, 11); }
-      }
-    }
-  } else {
-    if (!e.lane) e.lane = (rand() - 0.5) * 140;
-    const goal = new THREE.Vector3(e.lane, 0, EMBER_BASE.z - 30).sub(e.pos); goal.y = 0;
-    if (goal.length() > 6) { goal.normalize(); mv.copy(goal).multiplyScalar(e.s.speed * 0.75); face = goal; }
-  }
-  for (const o of enemies) { if (o === e || o.dead) continue; const dx = e.pos.x - o.pos.x, dz = e.pos.z - o.pos.z, dd = Math.hypot(dx, dz), m = e.s.radius + o.s.radius; if (dd < m && dd > 0.001) { mv.x += dx / dd * 4; mv.z += dz / dd * 4; } }
-  e.pos.addScaledVector(mv, dt); collide(e.pos, e.s.radius);
-  e.g.position.set(e.pos.x, 0, e.pos.z);
-  e.anim(time, Math.hypot(mv.x, mv.z), i);
-  if (face) e.g.rotation.y = Math.atan2(face.x, face.z);
+  if (!e.lane) e.lane = (rand() - 0.5) * 2 * BATTLE_LANE;
+  const aim = isPlayer ? { pos: player.pos } : tgt;
+  const { face, crouch } = soldierStep(e, dt, aim, new THREE.Vector3(e.lane, 0, EMBER_BASE.z - 40), e.s.speed, () => {
+    if (isPlayer) { enemyFire(e, 8, 34, 0.06); return; }
+    const from = e.tip.getWorldPosition(new THREE.Vector3()), at = tgt.head.getWorldPosition(new THREE.Vector3());
+    if (hasLOS(from, at)) { const hitIt = rand() < 0.4; if (!hitIt) at.x += (rand() - 0.5) * 2.5; tracer(from, at, 0xff6a4a); if (hitIt) hurtAlly(tgt, 11); }
+  });
+  soldierMove(e, dt, face, crouch, enemies, e.s.radius);
   e.flash = Math.max(0, e.flash - dt); e.body.emissive.setHex(e.flash > 0 ? 0x664444 : e.burn > 0 ? 0x552200 : 0x000000);
 }
 
@@ -4144,16 +4349,16 @@ function aiJet(j, dt){
     }
   } else {
     // nothing to fight: circle the field
-    if (!j.wp || j.pos.distanceTo(j.wp) < 80) j.wp = new THREE.Vector3((rand() - 0.5) * 600, 140 + rand() * 120, (rand() - 0.5) * 600);
+    if (!j.wp || j.pos.distanceTo(j.wp) < 80) j.wp = new THREE.Vector3((rand() - 0.5) * 1800, 140 + rand() * 120, (rand() - 0.5) * 1800);
     des.copy(j.wp).sub(j.pos).normalize();
   }
   // stay off the ground, out of the rocks and inside the airspace
-  const alt = j.pos.y - groundY(j.pos.x, j.pos.z);
+  const alt = j.pos.y - airFloor(j.pos.x, j.pos.z);
   if (alt < 90) des.y = Math.max(des.y + (90 - alt) / 30, (90 - alt) / 40);
   const ah = j.pos.clone().addScaledVector(fwd, j.speed * 2.2);
-  if (ah.y - groundY(ah.x, ah.z) < 50 || pillarAt(ah.x, ah.y, ah.z)) des.y = Math.max(des.y + 1.6, 0.6);
+  if (ah.y - airFloor(ah.x, ah.z) < 50 || pillarAt(ah.x, ah.y, ah.z)) des.y = Math.max(des.y + 1.6, 0.6);
   if (j.pos.y > 380) des.y = Math.min(des.y - (j.pos.y - 380) / 60, -0.1);
-  const r = Math.hypot(j.pos.x, j.pos.z); if (r > 560) { des.x -= j.pos.x / r * 1.5; des.z -= j.pos.z / r * 1.5; }
+  const r = Math.hypot(j.pos.x, j.pos.z); if (r > 1300) { des.x -= j.pos.x / r * 1.5; des.z -= j.pos.z / r * 1.5; }
   // keep the climb or dive under about 40 degrees: AI jets never go vertical
   des.y = clamp(des.y, -0.55, 0.6);
   let h = Math.hypot(des.x, des.z); if (h < 1e-3) { des.x = fwd.x; des.z = fwd.z; h = Math.hypot(des.x, des.z) || 1; }
@@ -4161,8 +4366,8 @@ function aiJet(j, dt){
   des.normalize();
   // steer heading and pitch separately so turning never tips the jet into a climb
   const yaw = Math.atan2(fwd.x, fwd.z), pitch = Math.asin(clamp(fwd.y, -1, 1));
-  const dYaw = clamp(Math.atan2(Math.sin(Math.atan2(des.x, des.z) - yaw), Math.cos(Math.atan2(des.x, des.z) - yaw)), -0.8 * dt, 0.8 * dt);
-  const np = clamp(pitch + clamp(Math.asin(clamp(des.y, -1, 1)) - pitch, -0.6 * dt, 0.6 * dt), -0.62, 0.66);
+  const dYaw = clamp(Math.atan2(Math.sin(Math.atan2(des.x, des.z) - yaw), Math.cos(Math.atan2(des.x, des.z) - yaw)), -0.7 * dt, 0.7 * dt);
+  const np = clamp(pitch + clamp(Math.asin(clamp(des.y, -1, 1)) - pitch, -0.52 * dt, 0.52 * dt), -0.62, 0.66);
   const nf = new THREE.Vector3(Math.sin(yaw + dYaw) * Math.cos(np), Math.sin(np), Math.cos(yaw + dYaw) * Math.cos(np));
   j.bank = lerp(j.bank, clamp(-dYaw / Math.max(dt, 0.001) * 1.6, -1.35, 1.35), Math.min(1, dt * 3));
   j.speed = lerp(j.speed, j.extendT > 0 ? 128 : 108, dt * 0.5);
@@ -4170,7 +4375,7 @@ function aiJet(j, dt){
   j.vel.copy(nf).multiplyScalar(j.speed);
   j.pos.addScaledVector(j.vel, dt);
   j.throttle = 0.8;
-  if (j.pos.y < groundY(j.pos.x, j.pos.z) + 2 || pillarAt(j.pos.x, j.pos.y, j.pos.z)) destroyJet(j, null);
+  if (j.pos.y < airFloor(j.pos.x, j.pos.z) + 2 || pillarAt(j.pos.x, j.pos.y, j.pos.z)) destroyJet(j, null);
 }
 const missileGeo = JET_GEO.missile;
 function fireMissile(from, target){
@@ -4197,7 +4402,7 @@ function updateMissiles(dt){
     s.vel.copy(dir).multiplyScalar(sp); p.addScaledVector(s.vel, dt);
     s.m.quaternion.setFromUnitVectors(_jv.set(0, 0, -1), dir);
     if (rand() < 0.8) burst(p.clone(), 0xcfcfcf, 1, 1);
-    let boom = s.t > 6.5 || p.y < groundY(p.x, p.z) || pillarAt(p.x, p.y, p.z);
+    let boom = s.t > 6.5 || p.y < airFloor(p.x, p.z) || pillarAt(p.x, p.y, p.z);
     if (tgt && p.distanceTo(tgt.pos) < 9) { boom = true; damageJet(tgt, 150, s.owner === player.jet ? 'player' : s.owner); }
     if (boom) { boomFx(p.clone(), 4); scene.remove(s.m); BATTLE.missiles.splice(i, 1); }
   }
@@ -4211,7 +4416,7 @@ function updateJets(dt){
       j.dead += dt; j.vel.y -= 14 * dt; j.pos.addScaledVector(j.vel, dt);
       j.g.rotateZ(j.spin * dt); j.g.rotateX(0.4 * dt);
       if (rand() < 0.9) burst(j.pos.clone(), rand() < 0.5 ? 0x333333 : 0xff8a3a, 2, 2);
-      if (j.pos.y < groundY(j.pos.x, j.pos.z) + 1 || j.dead > 6) { boomFx(j.pos.clone(), 6); scene.remove(j.g); BATTLE.jets.splice(i, 1); }
+      if (j.pos.y < airFloor(j.pos.x, j.pos.z) + 1 || j.dead > 6) { boomFx(j.pos.clone(), 6); scene.remove(j.g); BATTLE.jets.splice(i, 1); }
       continue;
     }
     if (j === player.jet) continue;
@@ -4231,7 +4436,7 @@ function updateJets(dt){
   for (const pad of BATTLE.pads) {
     const occupied = BATTLE.jets.some(j => !j.dead && Math.hypot(j.pos.x - pad.x, j.pos.z - pad.z) < 14 && j.pos.y < 6);
     pad.t = occupied ? 0 : pad.t + dt;
-    if (pad.t > 12 && parked < 5) { pad.t = 0; spawnJet('ember', { pad }); }
+    if (pad.t > 12 && parked < 8) { pad.t = 0; spawnJet('ember', { pad }); }
   }
 }
 function updateBattle(dt){
@@ -4242,8 +4447,8 @@ function updateBattle(dt){
   if (BATTLE.spawnT <= 0) {
     BATTLE.spawnT = 2.2;
     const rivals = enemies.filter(e => !e.dead && e.type === 'rival').length + pendingSpawns.filter(p => p.type === 'rival').length;
-    if (rivals < 7) telegraph('rival', { home: RIVAL_BASE, spread: 22 });
-    if (BATTLE.allies.filter(a => !a.dead).length < 6) spawnAlly(false);
+    if (rivals < 9) telegraph('rival', { home: RIVAL_BASE, spread: 40 });
+    if (BATTLE.allies.filter(a => !a.dead).length < 7) spawnAlly(false);
   }
 }
 
@@ -4266,7 +4471,7 @@ function flyJet(j, inp, dt){
     pitch = clamp(pitch + inp.pitch * 0.6 * dt * auth, 0, 0.22);
     j.q.setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
   } else {
-    _jq.setFromEuler(new THREE.Euler(inp.pitch * 1.1 * auth * dt, -inp.yaw * 0.38 * auth * dt, -inp.roll * 3.0 * Math.max(auth, 0.4) * dt, 'XYZ'));
+    _jq.setFromEuler(new THREE.Euler(inp.pitch * 0.95 * auth * dt, -inp.yaw * 0.33 * auth * dt, -inp.roll * 2.6 * Math.max(auth, 0.4) * dt, 'XYZ'));
     j.q.multiply(_jq).normalize();
   }
   jetFwd(j, fwd); jetUp(j, up);
@@ -4287,7 +4492,7 @@ function flyJet(j, inp, dt){
   }
   j.pos.addScaledVector(j.vel, dt);
   // ground contact: a gentle, level touch is a landing, anything else is a crash
-  const gy = groundY(j.pos.x, j.pos.z) + 1.6;
+  const gy = airFloor(j.pos.x, j.pos.z) + 1.6;
   if (j.pos.y <= gy) {
     const levelEnough = up.y > 0.88 && j.vel.y > -9 && fs < 105;
     if (levelEnough && !j.dead) { j.pos.y = gy; j.vel.y = Math.max(0, j.vel.y); if (!j.grounded) { j.grounded = true; shake = Math.max(shake, j === player.jet ? 0.25 : 0); } }
@@ -4296,7 +4501,7 @@ function flyJet(j, inp, dt){
   if (pillarAt(j.pos.x, j.pos.y, j.pos.z) && !j.dead) { destroyJet(j, null); return; }
   // soft ceiling and edge of the airspace
   if (j.pos.y > 450) j.vel.y -= Math.min(40, (j.pos.y - 450) * 0.6) * dt * 3;
-  const er = Math.hypot(j.pos.x, j.pos.z); if (er > 650 && j === player.jet) flight.edge = true; else if (j === player.jet) flight.edge = false;
+  const er = Math.hypot(j.pos.x, j.pos.z); if (er > 2150 && j === player.jet) flight.edge = true; else if (j === player.jet) flight.edge = false;
   j.flames.forEach(f => { f.visible = j.throttle > 0.05; f.scale.set(j.burner ? 1.3 : 1, j.burner ? 1.3 : 1, (j.burner ? 1.8 : 0.3 + j.throttle * 0.7) * (0.9 + Math.random() * 0.2)); });
 }
 function enterJet(j){
@@ -4311,7 +4516,7 @@ function enterJet(j){
 }
 function exitJet(destroyed){
   const j = player.jet; if (!j) return;
-  player.jet = null; document.body.classList.remove('flying'); show('jetHud', false); gun.visible = !(loc && loc.social);
+  player.jet = null; setNear(0.05); document.body.classList.remove('flying'); show('jetHud', false); gun.visible = !(loc && loc.social);
   if (flight.engine) { try { flight.engine.g.gain.setTargetAtTime(0, actx.currentTime, 0.1); } catch (e) {} }
   const fwd = jetFwd(j, new THREE.Vector3()), right = jetRight(j, new THREE.Vector3());
   player.yaw = Math.atan2(-fwd.x, -fwd.z); player.pitch = 0;
@@ -4345,7 +4550,7 @@ function updateFlight(dt){
   player.pos.copy(j.pos); player.vel.set(0, 0, 0);
   // past the edge of the airspace the jet is steered back toward the field
   const er = Math.hypot(j.pos.x, j.pos.z);
-  if (er > 760) { _jm.lookAt(_jv.set(0, 0, 0), _jv2.set(-j.pos.x, 0, -j.pos.z).normalize(), UP); _jq.setFromRotationMatrix(_jm); j.q.slerp(_jq, Math.min(1, (er - 760) / 60 * dt)); }
+  if (er > 2300) { _jm.lookAt(_jv.set(0, 0, 0), _jv2.set(-j.pos.x, 0, -j.pos.z).normalize(), UP); _jq.setFromRotationMatrix(_jm); j.q.slerp(_jq, Math.min(1, (er - 2300) / 60 * dt)); }
   const fwd = jetFwd(j, new THREE.Vector3());
   // cannons: two barrels converging 350 m ahead
   flight.gunCd -= dt;
@@ -4389,7 +4594,7 @@ function jetGuns(j, fwd){
   const h = _gunRay.intersectObjects(targets(), false)[0];
   if (h && h.distance < best) { best = h.distance; hitPt = h.point; hitE = h.object.userData.enemy || null; hitJ = null; crit = !!h.object.userData.crit; }
   let end = from.clone().addScaledVector(dir, best);
-  if (!hitJ && !hitE && !hitPt) { const gy = groundY(end.x, end.z); if (end.y < gy) { const t = (from.y - gy) / Math.max(0.001, from.y - end.y); end = from.clone().lerp(end, clamp(t, 0, 1)); burst(end, 0xd8b890, 3, 6); } }
+  if (!hitJ && !hitE && !hitPt) { const gy = airFloor(end.x, end.z); if (end.y < gy) { const t = (from.y - gy) / Math.max(0.001, from.y - end.y); end = from.clone().lerp(end, clamp(t, 0, 1)); burst(end, 0xd8b890, 3, 6); } }
   if (hitJ) { damageJet(hitJ, 11, 'player'); burst(end, 0xffc060, 3, 6); hitmark(''); sfx.hit(); }
   else if (hitE) { damageEnemy(hitE, 38, crit, hitPt, { kind: 'vehicle' }); burst(hitPt, hitE.s.glow, 3, 5); hitmark(crit ? 'crit' : ''); }
   else if (hitPt) burst(hitPt, 0xffd9a0, 3, 5);
@@ -4412,7 +4617,10 @@ function updateEngineSound(j){
   E.f.frequency.setTargetAtTime(300 + k * 900, t, 0.1); E.o.frequency.setTargetAtTime(55 + k * 70, t, 0.1);
   E.g.gain.setTargetAtTime(0.08 + k * 0.16, t, 0.1);
 }
+// a deeper near plane in the air keeps the far coastline and sea from flickering against each other
+function setNear(n){ if (camera.near !== n) { camera.near = n; camera.updateProjectionMatrix(); } }
 function flightCamera(dt){
+  setNear(2);
   if (fp.root) fp.root.visible = false; palmFlash.visible = false; flash.visible = false;
   const j = player.jet, fwd = jetFwd(j, new THREE.Vector3()), up = jetUp(j, new THREE.Vector3());
   const want = j.pos.clone().addScaledVector(up, 5.2).addScaledVector(fwd, -22);
@@ -4420,7 +4628,7 @@ function flightCamera(dt){
   flight.cam.lerp(want, Math.min(1, dt * 9)); flight.camQ.slerp(j.q, Math.min(1, dt * 6));
   shake = Math.max(0, shake - dt * 2.2); const sh = shake * shake * 0.3;
   camera.position.copy(flight.cam);
-  const gy = groundY(camera.position.x, camera.position.z) + 1.5; if (camera.position.y < gy) camera.position.y = gy;
+  const gy = airFloor(camera.position.x, camera.position.z) + 1.5; if (camera.position.y < gy) camera.position.y = gy;
   camera.quaternion.copy(flight.camQ).multiply(_jq.setFromEuler(new THREE.Euler(-0.07 + (rand() - 0.5) * sh, (rand() - 0.5) * sh, 0)));
   const fov = baseFov() * 0.92 + Math.min(18, j.vel.length() * 0.1) + (j.burner ? 4 : 0);
   if (Math.abs(camera.fov - fov) > 0.01) { camera.fov = lerp(camera.fov, fov, Math.min(1, dt * 4)); camera.updateProjectionMatrix(); }
@@ -4438,7 +4646,7 @@ function updateFlightHud(){
   const j = player.jet; if (!j) return;
   const fwd = jetFwd(j, new THREE.Vector3()), sp = j.vel.length(), fs = j.vel.dot(fwd);
   $('jSpd').firstChild.nodeValue = Math.round(sp * 3.6);
-  $('jAlt').firstChild.nodeValue = Math.round(j.pos.y - Math.max(0, groundY(j.pos.x, j.pos.z)));
+  $('jAlt').firstChild.nodeValue = Math.round(j.pos.y - Math.max(0, airFloor(j.pos.x, j.pos.z)));
   $('jThrFill').style.height = j.throttle * 100 + '%'; $('jThr').classList.toggle('burn', j.burner);
   $('jHpFill').style.width = Math.max(0, j.hp / j.maxHp * 100) + '%';
   const ready = j.mslReady.filter(t => t === 0).length;
@@ -4468,7 +4676,7 @@ const ARRIVE = {
   veyra: () => 'Frostfall Reach. It is cold enough to freeze my circuits. Stay moving.',
   kharun: () => 'Kharun Deep. I can hear something under the roots. Waves incoming.',
   crown: () => 'The Hollow Crown. This is their ground now. Be careful, Driftwalker.',
-  rift: () => 'Talos Rift. Rival Driftwalkers hold the north. Jets are on the pads behind you if you want the sky.'
+  rift: () => 'Talos Rift. Rival Driftwalkers hold the north. Choose where to deploy.'
 };
 function travelTo(id){
   const def = LOCATIONS[id]; if (!def || !ownsPack(def.pack) || state === 'travel') return;
@@ -4492,6 +4700,7 @@ function travelTo(id){
       if (def.combat) { player.swapT = 0.35; interT = 3; }
       questEvent('visit', id); renderTracker();
       wisp(ARRIVE[id]());
+      if (def.battle) openDeploy();
     }, 750);
   }, 480);
 }
@@ -4499,6 +4708,7 @@ function respawnHere(){
   resetGame(); if (loc) { player.pos.fromArray(loc.spawn); player.yaw = loc.yaw; }
   state = 'play'; show('deadOv', false); show('hud', true); show('touch', isTouch); requestLock(); last = performance.now();
   renderTracker();
+  if (loc && loc.battle) openDeploy();
 }
 buildLocation('tower');
 renderTracker();
@@ -4507,6 +4717,12 @@ renderTracker();
 addEventListener('keydown', e => {
   keys[e.code] = true;
   if (state === 'gear' && (e.code === 'Escape' || e.code === 'KeyI' || e.code === 'Tab')) { e.preventDefault(); closeGear(); return; }
+  if (state === 'deploy') {
+    if (e.code === 'Digit1') chooseDeploy(0); else if (e.code === 'Digit2') chooseDeploy(1);
+    else if (/Arrow(Left|Right|Up|Down)|Key[AD]/.test(e.code)) { deploySel = 1 - deploySel; markDeploy(); }
+    else if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); chooseDeploy(deploySel); }
+    return;
+  }
   if (state === 'director') {
     if (e.code === 'Escape' || e.code === 'KeyM') closeDirector();
     else if (dirTab === 'map' && (e.code === 'ArrowRight' || e.code === 'ArrowDown' || e.code === 'KeyD')) dirCycle(1);
@@ -4824,6 +5040,12 @@ function pollPad(dt){
   if (!$('ctrlOv').hidden) { pad.prev = cur; return; }
   if (state === 'menu' && tap('jump')) startGame();
   else if (state === 'dead' && tap('jump')) respawnHere();
+  else if (state === 'deploy') {
+    const nx = (g.buttons[15] && g.buttons[15].pressed ? 1 : 0) - (g.buttons[14] && g.buttons[14].pressed ? 1 : 0) || Math.round(stick(axisVal(g, binds.moveX.i) * binds.moveX.s));
+    if (nx && nx !== pad.nav) { deploySel = nx > 0 ? 1 : 0; markDeploy(); }
+    pad.nav = nx;
+    if (tap('jump')) chooseDeploy(deploySel);
+  }
   else if (state === 'pause' && (tap('pause') || tap('jump'))) { resume(); show('touch', isTouch); }
   else if (state === 'gear' && (tap('gear') || tap('slide') || tap('pause'))) closeGear();
   else if (state === 'director') {
@@ -4961,6 +5183,11 @@ function updateEnemies(dt){
   for (let i = pendingSpawns.length - 1; i >= 0; i--) { const p = pendingSpawns[i]; p.t += dt; if (p.t > 0.8) { spawnEnemy(p.type, p.x, p.z, p.opts); pendingSpawns.splice(i, 1); } }
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i];
+    if (e.dead && e.rig) {
+      e.dead += dt; e.rig.kill(); e.rig.animate(dt, e.vel || new THREE.Vector3(), false);
+      if (e.dead > 3.4) { scene.remove(e.g); enemies.splice(i, 1); }
+      continue;
+    }
     if (e.dead) {
       e.dead += dt; const k = e.dead / 0.4;
       e.g.scale.setScalar(Math.max(0.01, 1 - k)); e.g.position.y = k * 0.6;
@@ -5156,6 +5383,7 @@ function frame(now){
     if (loc && loc.battle) updateBattle(dt); else if (loc && loc.combat) updateWaves(dt);
     updateHud(dt); updateInteract(); if (player.jet) updateFlightHud();
   }
+  if (state === 'deploy') { updateEnemies(dt); updateProjectiles(dt); updateBattle(dt); }
   if (state === 'talk') talkCam(dt);
   talkZoom = lerp(talkZoom, state === 'talk' ? 1 : 0, Math.min(1, dt * 4));
   updateFx(dt);
