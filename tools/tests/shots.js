@@ -15,18 +15,18 @@ const ROOT = path.resolve(__dirname, '..', '..'), THREE_DIR = process.argv[2], O
     const rel = decodeURIComponent(new URL(r.request().url()).pathname.slice(1));
     let html = fs.readFileSync(path.join(ROOT, rel || 'index.html'));
     if (!rel || rel === 'index.html') {
-      html = html.toString().replace("requestAnimationFrame(frame);\n})();", "requestAnimationFrame(frame);\nwindow.__t = { big: () => { const out = []; scene.traverse(o => { if (!o.visible || !(o.isMesh || o.isSprite || o.isPoints)) return; if (o.isMesh && !o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); const r = o.isMesh ? o.geometry.boundingSphere.radius * o.getWorldScale(new THREE.Vector3()).length() / 1.732 : 0; const d = o.getWorldPosition(new THREE.Vector3()).distanceTo(camera.position); if (r > 60 && d < 800 || (o.isSprite && o.scale.x > 20)) out.push((o.geometry ? o.geometry.type : o.type) + ' r' + Math.round(r) + ' d' + Math.round(d) + ' ' + (o.material && o.material.type) + ' parent ' + (o.parent && (o.parent === scene ? 'scene' : o.parent === world ? 'world' : o.parent.type))); }); return out.join(' ; '); }, openGear, openDirector, renderGear, setTab: t => { gearTab = t; renderGear(); }, fill: n => { for (let k = 0; k < n; k++) { const it = rollItem(Math.floor(rand() * 5)); if (k % 2) inv.vault.push(it); else addItem(it); } saveInv(); }, sim: (n, dt) => { dt = dt || 1 / 30; for (let i = 0; i < n; i++) { time += dt; if (player.jet) updateFlight(dt); else updatePlayer(dt); updateEnemies(dt); updateProjectiles(dt); if (loc.battle) updateBattle(dt); updateFx(dt); if (player.jet) flightCamera(dt); } }, travelTo, chooseDeploy, ISLAND, camera, player, BATTLE, enterJet, exitJet, keys, flight, get interactJet() { return interactJet; }, get state() { return state; }, info: () => JSON.stringify(renderer.info.render), get zone() { return ZONE; }, outposts, enemies, groundY, drop: p => { const L0 = loot.length; while (loot.length === L0 || loot[loot.length - 1].item.kind !== 'weapon') { if (loot.length > L0) { scene.remove(loot.pop().g); } dropLoot(p, 1); } }, show: (type, dist) => { if (window.__m) scene.remove(window.__m); const d = new THREE.Vector3(); camera.getWorldDirection(d); d.y = 0; d.normalize(); const e = buildEnemy(type); e.g.position.copy(camera.position).addScaledVector(d, dist); e.g.position.y = 0; e.g.lookAt(camera.position.x, e.g.position.y, camera.position.z); scene.add(e.g); window.__m = e.g; }, gun: (arch) => { const w = makeWeapon(ARCH[arch].slots[0], 3, 1010, { arch }); inv.equipped[w.slot] = w.uid; inv.items.push(w); player.wslot = WSLOTS.indexOf(w.slot); applyWeaponLook(); } };\n})();");
+      html = html.toString().replace("requestAnimationFrame(frame);\n})();", "requestAnimationFrame(frame);\nwindow.__t = { big: () => { const out = []; scene.traverse(o => { if (!o.visible || !(o.isMesh || o.isSprite || o.isPoints)) return; if (o.isMesh && !o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); const r = o.isMesh ? o.geometry.boundingSphere.radius * o.getWorldScale(new THREE.Vector3()).length() / 1.732 : 0; const d = o.getWorldPosition(new THREE.Vector3()).distanceTo(camera.position); if (r > 60 && d < 800 || (o.isSprite && o.scale.x > 20)) out.push((o.geometry ? o.geometry.type : o.type) + ' r' + Math.round(r) + ' d' + Math.round(d) + ' ' + (o.material && o.material.type) + ' parent ' + (o.parent && (o.parent === scene ? 'scene' : o.parent === world ? 'world' : o.parent.type))); }); return out.join(' ; '); }, openGear, openDirector, renderGear, setTab: t => { gearTab = t; renderGear(); }, fill: n => { for (let k = 0; k < n; k++) { const it = rollItem(Math.floor(rand() * 5)); if (k % 2) inv.vault.push(it); else addItem(it); } saveInv(); }, sim: (n, dt) => { dt = dt || 1 / 30; for (let i = 0; i < n; i++) { time += dt; if (player.jet) updateFlight(dt); else updatePlayer(dt); updateEnemies(dt); updateProjectiles(dt); if (loc.battle) updateBattle(dt); updateFx(dt); if (player.jet) flightCamera(dt); } }, travelTo, aimTurn, chooseDeploy, ISLAND, camera, scene, renderer, player, BATTLE, enterJet, exitJet, keys, flight, get interactJet() { return interactJet; }, get state() { return state; }, info: () => JSON.stringify(renderer.info.render), get zone() { return ZONE; }, outposts, enemies, groundY, drop: p => { const L0 = loot.length; while (loot.length === L0 || loot[loot.length - 1].item.kind !== 'weapon') { if (loot.length > L0) { scene.remove(loot.pop().g); } dropLoot(p, 1); } }, show: (type, dist) => { if (window.__m) scene.remove(window.__m); const d = new THREE.Vector3(); camera.getWorldDirection(d); d.y = 0; d.normalize(); const e = buildEnemy(type); e.g.position.copy(camera.position).addScaledVector(d, dist); e.g.position.y = 0; e.g.lookAt(camera.position.x, e.g.position.y, camera.position.z); scene.add(e.g); window.__m = e.g; }, gun: (arch) => { const w = makeWeapon(ARCH[arch].slots[0], 3, 1010, { arch }); inv.equipped[w.slot] = w.uid; inv.items.push(w); player.wslot = WSLOTS.indexOf(w.slot); applyWeaponLook(); } };\n})();");
       return r.fulfill({ body: html, contentType: 'text/html; charset=utf-8' });
     }
     r.fulfill({ body: html, contentType: rel.endsWith('.jpg') ? 'image/jpeg' : rel.endsWith('.glb') ? 'model/gltf-binary' : 'application/octet-stream' });
   });
-  await p.goto('http://local/index.html');
+  await p.goto('http://local/index.html?q=full');
   await p.waitForTimeout(2500);
   fs.mkdirSync(OUT, { recursive: true });
   const pre = phone ? 'ph_' : '';
   await p.screenshot({ path: path.join(OUT, pre + 'menu.png') });
   const mode = process.argv[5];
-  const ids = mode === 'guns' || mode === 'models' || mode === 'drops' ? ['steppe'] : mode === 'world' || mode === 'fps' || mode === 'battle' || mode === 'deploy' || mode === 'aitrace' || mode === 'ui' ? [] : ['tower', 'steppe', 'veyra', 'kharun'];
+  const ids = mode === 'guns' || mode === 'models' || mode === 'drops' ? ['steppe'] : mode === 'world' || mode === 'fps' || mode === 'battle' || mode === 'deploy' || mode === 'perf' || mode === 'probe' || mode === 'flight' || mode === 'aitrace' || mode === 'ui' ? [] : ['tower', 'steppe', 'veyra', 'kharun'];
   for (const id of ids) {
     await p.evaluate(id => __t.travelTo(id), id); await p.waitForTimeout(3500);
     await p.evaluate(() => { __t.player.pitch = -0.12; }); await p.waitForTimeout(500);
@@ -102,6 +102,42 @@ const ROOT = path.resolve(__dirname, '..', '..'), THREE_DIR = process.argv[2], O
     console.log('ejected', await p.evaluate(() => JSON.stringify({ y: __t.player.pos.y.toFixed(1), eject: __t.player.eject, state: __t.state })));
     await p.evaluate(() => __t.sim(600));
     console.log('sim 20s more', await p.evaluate(() => JSON.stringify({ score: __t.BATTLE.score, rivals: __t.enemies.filter(e => e.type === 'rival' && !e.dead).length, allies: __t.BATTLE.allies.length, jets: __t.BATTLE.jets.length, hp: __t.player.hp | 0, state: __t.state })));
+  }
+  if (mode === 'perf') {
+    const rep = async tag => console.log(tag, await p.evaluate(() => { const scene = __t.scene; let n = 0, sh = 0; scene.traverse(o => { if (o.isMesh && o.visible) { n++; if (o.castShadow) sh++; } }); const lights = []; scene.traverse(o => { if (o.isLight) lights.push(o.type); }); const r = __t.renderer; r.info.autoReset = false; r.info.reset(); return new Promise(res => requestAnimationFrame(() => requestAnimationFrame(() => { const i = r.info.render; r.info.autoReset = true; res('meshes ' + n + ' shadowcasters ' + sh + ' lights ' + lights.length + ' calls ' + i.calls + ' tris ' + i.triangles + ' (2 frames incl shadows)'); }))); }));
+    await p.evaluate(() => __t.travelTo('steppe')); await p.waitForFunction(() => __t.state === 'play', null, { timeout: 60000 }); await p.waitForTimeout(1500); await rep('steppe');
+    await p.evaluate(() => __t.travelTo('rift')); await p.waitForFunction(() => __t.state === 'deploy', null, { timeout: 60000 }); await p.evaluate(() => __t.chooseDeploy(1)); await p.evaluate(() => __t.sim(60)); await p.waitForTimeout(1500); await rep('rift front');
+    await p.evaluate(() => { __t.player.pos.set(0, 0, 0); __t.player.yaw = 0; }); await p.waitForTimeout(1500); await rep('rift mid');
+    await p.evaluate(() => { const j = __t.BATTLE.jets.find(j => j.parked); __t.player.pos.set(j.pos.x + 5, 0, j.pos.z); __t.enterJet(j); j.pos.set(0, 300, 900); j.grounded = false; j.vel.set(0, 0, -150); __t.flight.camInit = false; __t.sim(2); }); await p.waitForTimeout(1500); await rep('rift air');
+  }
+  if (mode === 'flight') {
+    await p.evaluate(() => __t.travelTo('rift')); await p.waitForFunction(() => __t.state === 'deploy', null, { timeout: 60000 }); await p.evaluate(() => __t.chooseDeploy(0)); await p.waitForTimeout(500);
+    const st = () => p.evaluate(() => { const j = __t.player.jet; if (!j) return 'no jet ' + __t.state; const f = new THREE.Vector3(0, 0, -1).applyQuaternion(j.q), r = new THREE.Vector3(1, 0, 0).applyQuaternion(j.q); return JSON.stringify({ y: j.pos.y | 0, v: Math.round(j.vel.length() * 3.6), g: (j.gLoad || 0).toFixed(1), hdg: Math.round(Math.atan2(-f.x, -f.z) * 57.3), pit: Math.round(Math.asin(f.y) * 57.3), bank: Math.round(Math.asin(-r.y) * 57.3), aimOff: Math.round(f.angleTo(__t.flight.aim) * 57.3), gr: j.grounded, br: j.brake }); });
+    await p.evaluate(() => { const j = __t.BATTLE.jets.find(j => j.parked && j.pos.z > 1000); __t.player.pos.set(j.pos.x + 5, 0, j.pos.z); __t.enterJet(j); __t.keys.KeyW = true; });
+    for (let k = 0; k < 4; k++) { await p.evaluate(() => __t.sim(30)); console.log('roll', k, await st()); }
+    await p.evaluate(() => __t.aimTurn(Math.PI, -0.35));
+    for (let k = 0; k < 6; k++) { await p.evaluate(() => __t.sim(30)); console.log('climb', k, await st()); }
+    await p.evaluate(() => __t.aimTurn(0, 0.35));
+    for (let k = 0; k < 4; k++) { await p.evaluate(() => __t.sim(30)); console.log('level', k, await st()); }
+    await p.evaluate(() => { __t.keys.ShiftLeft = true; __t.sim(240); }); console.log('burner 8s', await st());
+    await p.evaluate(() => __t.aimTurn(-1.57, 0));
+    for (let k = 0; k < 10; k++) { await p.evaluate(() => __t.sim(15)); console.log('turn90', k, await st()); }
+    await p.waitForTimeout(800); await p.screenshot({ path: path.join(OUT, pre + 'flight_turn.png') });
+    await p.evaluate(() => __t.aimTurn(3.0, 0));
+    for (let k = 0; k < 10; k++) { await p.evaluate(() => __t.sim(20)); console.log('reverse', k, await st()); }
+    await p.waitForTimeout(800); await p.screenshot({ path: path.join(OUT, pre + 'flight_level.png') });
+    await p.evaluate(() => { __t.keys.ShiftLeft = false; __t.keys.KeyW = false; __t.keys.KeyS = true; __t.sim(90); }); console.log('throttle cut', await st());
+    await p.evaluate(() => { __t.sim(90); }); console.log('airbrake', await st());
+    await p.evaluate(() => { __t.keys.KeyS = false; __t.keys.ArrowDown = true; __t.keys.KeyW = true; __t.sim(30); __t.keys.ArrowDown = false; }); console.log('hand pull', await st());
+    await p.evaluate(() => { __t.sim(60); }); console.log('after hand', await st());
+  }
+  if (mode === 'probe') {
+    await p.evaluate(() => __t.travelTo('rift')); await p.waitForFunction(() => __t.state === 'deploy', null, { timeout: 60000 }); await p.evaluate(() => __t.chooseDeploy(0));
+    for (const y of [400, 830]) {
+      await p.evaluate(y => { if (!__t.player.jet) { const j = __t.BATTLE.jets.find(j => j.parked && j.pos.z > 1000); __t.player.pos.set(j.pos.x + 5, 0, j.pos.z); __t.enterJet(j); } const j = __t.player.jet; j.pos.set(0, y, 900); j.grounded = false; j.vel.set(0, 0, -200); j.q.set(0, 0, 0, 1); __t.flight.aim.set(-0.5, 0.3, -0.8).normalize(); __t.flight.camInit = false; __t.sim(2); }, y);
+      await p.waitForTimeout(1200); await p.screenshot({ path: path.join(OUT, 'probe_' + y + '.png') });
+      console.log(y, await p.evaluate(() => __t.big()));
+    }
   }
   if (mode === 'deploy') {
     await p.evaluate(() => __t.travelTo('rift')); await p.waitForFunction(() => __t.state === 'deploy', null, { timeout: 60000 }); await p.waitForTimeout(800);
