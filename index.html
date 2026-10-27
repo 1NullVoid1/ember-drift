@@ -139,6 +139,10 @@ canvas#view{position:fixed;inset:0;width:100%;height:100%;display:block}
 #jSpd{left:calc(18% + env(safe-area-inset-left,0px))}#jAlt{right:calc(18% + env(safe-area-inset-right,0px));text-align:right}
 #jG{right:calc(18% + env(safe-area-inset-right,0px));text-align:right;top:64%;font-size:18px}#jG.hot{color:#ffcf5a}
 #jSpd.brake small::after{content:' · brake';color:#ffcf5a}
+#jStick{position:absolute;left:50%;bottom:calc(19% + env(safe-area-inset-bottom,0px));width:60px;height:60px;margin-left:-30px;border:1px solid rgba(255,255,255,.3);border-radius:50%}
+#jStick::before{content:'';position:absolute;left:50%;top:6px;bottom:6px;border-left:1px solid rgba(255,255,255,.15)}
+#jStick i{position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;background:rgba(160,255,170,.9);border-radius:50%;transform:translate(var(--x,0),var(--y,0))}
+#jStick.lvl{border-color:rgba(160,255,170,.55)}
 #jAim{position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border:2px solid rgba(255,255,255,.9);border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.4)}
 #jThr{position:absolute;left:calc(18% - 22px + env(safe-area-inset-left,0px));top:calc(50% + 34px);width:8px;height:90px;background:rgba(255,255,255,.12)}
 #jThrFill{position:absolute;left:0;right:0;bottom:0;background:rgba(160,255,170,.85)}
@@ -442,7 +446,7 @@ body.social #tTalk.on{display:flex}
   <div id="gearHint"><span id="gearDot" hidden></span>I · Gear</div>
   <div id="bScore" hidden><span class="e">EMBER <b id="bsE">0</b></span><small>FIRST TO 60</small><span class="r"><b id="bsR">0</b> RIVALS</span></div>
   <div id="jetHud" hidden>
-    <div id="jMarks"></div><div id="jAim"></div><div id="jPipper"></div><div id="jLock"></div><div class="jread" id="jG">1.0<small>G</small></div>
+    <div id="jMarks"></div><div id="jAim"></div><div id="jStick"><i></i></div><div id="jPipper"></div><div id="jLock"></div><div class="jread" id="jG">1.0<small>G</small></div>
     <div class="jread" id="jSpd">0<small>km/h</small></div><div class="jread" id="jAlt">0<small>Alt m</small></div>
     <div id="jThr"><i id="jThrFill"></i></div>
     <div id="jInfo"><div id="jHp"><i id="jHpFill"></i></div><span id="jMsl">Missiles 2</span><span id="jFlare">Flares ready</span></div>
@@ -576,6 +580,7 @@ body.social #tTalk.on{display:flex}
 <div class="overlay" id="deployOv" hidden>
   <div class="panel">
     <h2 class="title" style="font-size:52px"><small>Talos Rift</small>Choose your deployment</h2>
+    <p id="depNote" hidden>You came down outside the battle zone. A dropship picked you up.</p>
     <div class="depgrid">
       <button class="dep" id="depHangar"><span class="lbl">1 · Air</span><b>Hangar Island</b><span>Spawn by the hangar across the strait. Grab a jet off the runway and fly to the war.</span></button>
       <button class="dep" id="depFront"><span class="lbl">2 · Ground</span><b>Front lines</b><span>Drop in at the Ember base with your squad, right where the fighting is.</span></button>
@@ -904,9 +909,9 @@ function playDist(x, z){
   for (const p of ZONE.paths) d = Math.min(d, segDist(x, z, p.ax, p.az, p.bx, p.bz) - p.w / 2);
   return d;
 }
-// pull a point back inside the walkable space (onto the nearest area or path edge)
-function clampPlay(p, r){
-  if (playDist(p.x, p.z) <= -r) return;
+// the nearest point inside the walkable space (on an area or path edge), or null when (x, z) is already inside
+function nearestPlay(x, z, r){
+  const p = { x, z };
   let best = null, bd = Infinity;
   for (const a of ZONE.areas) {
     const dx = p.x - a.x, dz = p.z - a.z, d = Math.hypot(dx, dz), lim = a.r - r;
@@ -917,7 +922,12 @@ function clampPlay(p, r){
     const cx = q.ax + dx * t, cz = q.az + dz * t, ox = p.x - cx, oz = p.z - cz, d = Math.hypot(ox, oz), lim = q.w / 2 - r;
     if (d - lim < bd) { bd = d - lim; best = d > lim ? [cx + ox / d * lim, cz + oz / d * lim] : [p.x, p.z]; }
   }
-  if (best && bd > 0) { p.x = best[0]; p.z = best[1]; }
+  return best && bd > 0 ? best : null;
+}
+// pull a point back inside the walkable space
+function clampPlay(p, r){
+  if (playDist(p.x, p.z) <= -r) return;
+  const b = nearestPlay(p.x, p.z, r); if (b) { p.x = b[0]; p.z = b[1]; }
 }
 // lay out outposts around the main arena with bending paths to each, from the location's seed
 function makeZone(def){
@@ -3177,7 +3187,7 @@ function die(){
 }
 function clearList(list, key){ for (const o of list) scene.remove(o[key]); list.length = 0; }
 function resetGame(){
-  if (player.jet) { player.jet.abandoned = true; player.jet = null; document.body.classList.remove('flying'); show('jetHud', false); gun.visible = !(loc && loc.social); }
+  if (player.jet) { player.jet.abandoned = true; player.jet = null; document.body.classList.remove('flying'); show('jetHud', false); gun.visible = !(loc && loc.social); stopEngine(); setNear(0.05); }
   player.eject = false;
   clearList(enemies, 'g'); clearList(shots, 'm'); clearList(grenades, 'm'); clearList(loot, 'g');
   pendingSpawns.length = 0; bossRef = null;
@@ -4134,7 +4144,7 @@ function spawnJet(team, opts){
   scene.add(j.g); BATTLE.jets.push(j);
   return j;
 }
-const _jq2 = new THREE.Quaternion(), _jf = new THREE.Vector3(), _ju = new THREE.Vector3(), _jr = new THREE.Vector3(), _jq = new THREE.Quaternion(), _jm = new THREE.Matrix4(), _jv = new THREE.Vector3(), _jv2 = new THREE.Vector3();
+const _jq2 = new THREE.Quaternion(), _jf = new THREE.Vector3(), _ju = new THREE.Vector3(), _jr = new THREE.Vector3(), _jq = new THREE.Quaternion(), _jm = new THREE.Matrix4(), _jv = new THREE.Vector3(), _jv2 = new THREE.Vector3(), _jv3 = new THREE.Vector3();
 const jetFwd = (j, out) => (out || _jf).set(0, 0, -1).applyQuaternion(j.q);
 const jetUp = (j, out) => (out || _ju).set(0, 1, 0).applyQuaternion(j.q);
 const jetRight = (j, out) => (out || _jr).set(1, 0, 0).applyQuaternion(j.q);
@@ -4273,7 +4283,7 @@ function openDeploy(){
 function markDeploy(){ ['depHangar', 'depFront'].forEach((id, i) => $(id).classList.toggle('sel', i === deploySel)); }
 function chooseDeploy(i){
   if (state !== 'deploy') return;
-  deploySel = i; show('deployOv', false);
+  deploySel = i; show('deployOv', false); show('depNote', false);
   if (i === 0) { player.pos.set(ISLAND.x, 0, ISLAND.z + 92); player.yaw = 0; }
   else { player.pos.set(EMBER_BASE.x + (rand() - 0.5) * 20, 0, EMBER_BASE.z + 26); player.yaw = 0; }
   player.vel.set(0, 0, 0); player.pitch = 0; player.hp = 100;
@@ -4287,7 +4297,7 @@ function battleClear(){
   for (const a of BATTLE.allies) scene.remove(a.g);
   for (const m of BATTLE.missiles) scene.remove(m.m);
   BATTLE.jets.length = 0; BATTLE.allies.length = 0; BATTLE.missiles.length = 0; BATTLE.pads.length = 0;
-  if (player.jet) { player.jet = null; setNear(0.05); document.body.classList.remove('flying'); }
+  if (player.jet) { player.jet = null; setNear(0.05); document.body.classList.remove('flying'); stopEngine(); }
   BATTLE.active = false; show('bScore', false);
 }
 function battleStart(){
@@ -4514,7 +4524,7 @@ function updateBattle(dt){
 
 // ---------- flying: your jet ----------
 const NO_INPUT = { pitch: 0, roll: 0, yaw: 0, thr: 0, burner: false };
-const flight = { aim: new THREE.Vector3(0, 0, -1), mode: 'aim', g: 1, brake: false, mx: 0, my: 0, tx: 0, ty: 0, padYaw: 0, padThr: 0, thrUp: false, thrDn: false, boost: false, mslBtn: false, mslPrev: false, flareBtn: false, gunCd: 0, gunSide: 1, lock: null, lockT: 0, mslWarn: 0, cam: new THREE.Vector3(), camQ: new THREE.Quaternion(), camInit: false, invert: false, engine: null };
+const flight = { aim: new THREE.Vector3(0, 0, -1), mode: 'aim', g: 1, kp: 0, kr: 0, handsOff: 0, stick: { x: 0, y: 0 }, brake: false, mx: 0, my: 0, tx: 0, ty: 0, padYaw: 0, padThr: 0, thrUp: false, thrDn: false, boost: false, mslBtn: false, mslPrev: false, flareBtn: false, gunCd: 0, gunSide: 1, lock: null, lockT: 0, mslWarn: 0, cam: new THREE.Vector3(), camQ: new THREE.Quaternion(), camInit: false, invert: false, engine: null };
 try { flight.invert = localStorage.getItem('emberdrift.invertFlight') === '1'; if (localStorage.getItem('emberdrift.flightMode') === 'direct') flight.mode = 'direct'; } catch (e) {}
 const G_MAX = 9;
 // Flight model in the spirit of Nuclear Option: thrust, drag, gravity and lift, with the velocity bending toward
@@ -4536,7 +4546,7 @@ function flyJet(j, inp, dt){
   } else {
     const gLim = G_MAX * 9.8 / Math.max(speed, 40);
     if (!j.rate) j.rate = new THREE.Vector3();
-    j.rate.lerp(_jv.set(clamp(inp.pitch * 1.0 * auth, -gLim * 0.5, gLim), -inp.yaw * 0.3 * auth, -inp.roll * 2.4 * Math.max(auth, 0.4)), Math.min(1, dt * 5));
+    j.rate.lerp(_jv.set(clamp(inp.pitch * 1.0 * auth, -gLim * 0.5, gLim), -inp.yaw * 0.3 * auth, -inp.roll * 2.4 * Math.max(auth, 0.4)), Math.min(1, dt * (inp.resp || 5)));
     _jq.setFromEuler(new THREE.Euler(j.rate.x * dt, j.rate.y * dt, j.rate.z * dt, 'XYZ'));
     j.q.multiply(_jq).normalize();
   }
@@ -4581,13 +4591,14 @@ function enterJet(j){
   j.mslReady = [0, 0];
   firing = false; adsHeld = false; touchAds = false; $('tAim').classList.remove('on');
   document.body.classList.add('flying'); show('jetHud', true); gun.visible = false;
-  if (!flight.seen) { flight.seen = true; wisp(isTouch ? (flight.mode === 'aim' ? 'Drag to point, the jet flies there. ' : '') + 'Left stick steers by hand. Hold + for throttle, pull back past 220 km/h to lift off. Fire for guns, Missile once the box locks red.' : pad.active ? 'Left stick steers, right stick is throttle and rudder. A for afterburner, RT guns, LT missiles, B flares.' : (flight.mode === 'aim' ? 'Point with the mouse and the jet flies there. Arrow keys fly it by hand. ' : 'Mouse steers. ') + 'W and S throttle (S at zero is airbrake), A and D rudder, Shift afterburner. Click for guns, right-click for missiles, F for flares, E to get out.'); }
+  if (!flight.seen) { flight.seen = true; wisp(isTouch ? (flight.mode === 'aim' ? 'Drag to point, the jet flies there. ' : '') + 'Left stick steers by hand. Hold + for throttle, pull back past 220 km/h to lift off. Fire for guns, Missile once the box locks red.' : pad.active ? 'Left stick steers, right stick is throttle and rudder. A for afterburner, RT guns, LT missiles, B flares.' : (flight.mode === 'aim' ? 'Point with the mouse and the jet flies there. Arrow keys fly it by hand. ' : 'The mouse works like a stick: up and down pitch, left and right roll. Let go and the wings level out. ') + 'W and S throttle (S at zero is airbrake), A and D rudder, Shift afterburner. Click for guns, right-click for missiles, F for flares, E to get out.'); }
   sTone(120, 260, 0.8, 0.12, 'sawtooth');
 }
+function stopEngine(){ if (flight.engine && !flight.muted) { flight.muted = true; try { flight.engine.g.gain.setTargetAtTime(0, actx.currentTime, 0.1); } catch (e) {} } }
 function exitJet(destroyed){
   const j = player.jet; if (!j) return;
   player.jet = null; setNear(0.05); document.body.classList.remove('flying'); show('jetHud', false); gun.visible = !(loc && loc.social);
-  if (flight.engine) { try { flight.engine.g.gain.setTargetAtTime(0, actx.currentTime, 0.1); } catch (e) {} }
+  stopEngine();
   const fwd = jetFwd(j, new THREE.Vector3()), right = jetRight(j, new THREE.Vector3());
   player.yaw = Math.atan2(-fwd.x, -fwd.z); player.pitch = 0;
   if (!destroyed && j.grounded && j.vel.length() < 14) {
@@ -4605,37 +4616,99 @@ function aimTurn(dx, dy){
   const a = flight.aim, yaw = Math.atan2(-a.x, -a.z) - dx, pitch = clamp(Math.asin(clamp(a.y, -1, 1)) - dy, -1.4, 1.4);
   a.set(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
 }
+// fly toward a world direction. Well off the nose, roll so the point sits above the canopy and pull (a point far
+// below is reached by rolling over, one a little below by pushing over). Close in, bank in proportion to how far
+// the point is to the side and let pitch and rudder settle on it, so small corrections never tip the jet over.
+// Mouse aim uses this every frame; direct flight uses it to bring you back from the edge of the airspace.
+function steerToward(j, aim, yaw){
+  const l = _jv2.copy(aim).applyQuaternion(_jq2.copy(j.q).invert());
+  const off = Math.acos(clamp(-l.z, -1, 1)), w = clamp(off / 0.17, 0, 1), s = clamp((off - 0.17) / 0.17, 0, 1);
+  const F = jetFwd(j, new THREE.Vector3()), R = jetRight(j, new THREE.Vector3()), U = jetUp(j, new THREE.Vector3()), bank = Math.atan2(-R.y, U.y);
+  // where the point lies around the nose: 0 straight above the canopy, +-PI straight below
+  let phi = Math.atan2(l.x, l.y);
+  if (j.push ? Math.abs(phi) < 1.4 || off > 0.6 || U.y < 0.5 : Math.abs(phi) > 2.1 && off < 0.45 && U.y > 0.7) j.push = !j.push;
+  if (j.push) { phi = Math.atan2(-l.x, -l.y); j.rollDir = 0; }
+  else if (Math.abs(phi) > 2.4) {
+    // nearly opposite the canopy: roll the way that passes through wings level, and stick with it
+    if (!j.rollDir) j.rollDir = bank > 0.2 ? -1 : bank < -0.2 ? 1 : (j.rate.z < 0 ? 1 : -1);
+    phi = Math.abs(phi) * j.rollDir;
+  } else j.rollDir = 0;
+  // a moderate turn stops just past 90 degrees of bank and the rudder makes up the rest
+  let want = bank + phi, rud = 0;
+  if (!j.push && off < 0.6) { const c = clamp(want, -1.6, 1.6); if (Math.abs(want - c) > 0.05) rud = clamp(l.x * 8, -1, 1) * s; want = c; }
+  const dRoll = Math.atan2(Math.sin(want - bank), Math.cos(want - bank));
+  // close in: bank to turn by the heading error, gently over the last few degrees
+  let fine = lerp(R.y * 2, l.x * 5, w);
+  if (Math.hypot(F.x, F.z) > 0.3) { const eh = Math.atan2(F.x * aim.z - F.z * aim.x, F.x * aim.x + F.z * aim.z); fine = (clamp(eh * 8 * Math.min(1, Math.abs(eh) / 0.1), -1.2, 1.2) - bank) * 2; }
+  // pull only once the lift points at the target, so the nose doesn't climb while the jet is still rolling in;
+  // the rate terms damp the motion so the nose settles on the point instead of rocking past it
+  const gate = lerp(1, clamp(Math.cos(phi) * 2 - 0.6, 0, 1), s);
+  return {
+    pitch: clamp((l.z > 0 ? 1 : l.y * 6) * gate - j.rate.x * 0.45, -1, 1),
+    roll: clamp(lerp(fine, dRoll * 2.2, s) + j.rate.z * 0.25, -1, 1),
+    yaw: clamp(yaw + (l.x * 6 + j.rate.y * 1.5) * (1 - w) + rud, -1, 1)
+  };
+}
+// the rival jet nearest the nose inside a cone (aim help)
+function rivalNearNose(j, fwd, cone, range){
+  let best = null, ba = cone;
+  for (const f of liveJets('rival')) { const to = _jv3.copy(f.pos).sub(j.pos), d = to.length(); if (d > range || d < 1) continue; const a = fwd.angleTo(to.divideScalar(d)); if (a < ba) { ba = a; best = f; } }
+  return best;
+}
+// arrow keys ease in, so a tap is a small correction and holding gives the full rate
+const keyRamp = (v, want, dt) => want ? clamp(v + clamp(want - v, -dt * 3.2, dt * 3.2), -1, 1) : v * Math.max(0, 1 - dt * 12);
 function flightInput(dt){
-  const inv = flight.invert ? -1 : 1;
-  flight.mx *= 1 - Math.min(1, dt * 2.2); flight.my *= 1 - Math.min(1, dt * 2.2);
+  const inv = flight.invert ? -1 : 1, direct = flight.mode !== 'aim', j = player.jet;
+  // the mouse and touch-drag work a virtual stick that springs back to centre; in direct flight it springs back
+  // fast, so moving the mouse nudges the nose and stopping stops it, much like aiming on foot
+  const back = direct ? 6 : 2.2;
+  flight.mx *= 1 - Math.min(1, dt * back); flight.my *= 1 - Math.min(1, dt * back);
   flight.tx *= 1 - Math.min(1, dt * 3); flight.ty *= 1 - Math.min(1, dt * 3);
   const k = (a, b) => (keys[a] ? 1 : 0) - (keys[b] ? 1 : 0);
+  flight.kp = keyRamp(flight.kp, k('ArrowDown', 'ArrowUp'), dt); flight.kr = keyRamp(flight.kr, k('ArrowRight', 'ArrowLeft'), dt);
+  // the touch stick gets the same soft centre as a controller stick
+  const jx = Math.sign(joy.x) * joy.x * joy.x, jy = Math.sign(joy.y) * joy.y * joy.y;
   // sticks and arrows: push forward to dive. mouse and touch-drag: move up to climb, like looking
-  const handP = k('ArrowDown', 'ArrowUp') - joy.y - pad.y, handR = k('ArrowRight', 'ArrowLeft') + joy.x + pad.x;
+  const handP = flight.kp - jy - pad.y, handR = flight.kr + jx + pad.x;
   let pitch = clamp(inv * (handP - flight.my - flight.ty), -1, 1);
   let roll = clamp(handR + flight.mx + flight.tx * 0.5, -1, 1);
-  let yaw = clamp(k('KeyD', 'KeyA') + flight.padYaw + (flight.mode === 'aim' ? 0 : flight.tx * 0.5), -1, 1);
-  const j = player.jet;
-  if (flight.mode === 'aim' && j) {
+  let yaw = clamp(k('KeyD', 'KeyA') + flight.padYaw + (direct ? flight.tx * 0.5 : 0), -1, 1);
+  let resp = 5;
+  if (!direct && j) {
     if (Math.abs(handP) > 0.05 || Math.abs(handR) > 0.05) jetFwd(j, flight.aim);   // flying by hand: the aim rides the nose
     else if (j.grounded) {
       // on the runway: steer toward the aim and lift the nose once you aim up
       const l = _jv2.copy(flight.aim).applyQuaternion(_jq2.copy(j.q).invert());
       pitch = clamp(l.y * 6, -1, 1); yaw = clamp(yaw + l.x * 4, -1, 1); roll = 0;
-    } else {
-      // mouse aim: bank toward the aim point and pull, rolling the wings level as the nose settles on it
-      const l = _jv2.copy(flight.aim).applyQuaternion(_jq2.copy(j.q).invert());
-      const off = Math.acos(clamp(-l.z, -1, 1)), w = clamp(off / 0.17, 0, 1), behind = l.z > 0;
-      const level = jetRight(j, new THREE.Vector3()).y * 2;
-      pitch = clamp(behind ? 1 : l.y * 6, -1, 1);
-      roll = clamp(lerp(level, behind ? Math.sign(l.x || 1) : l.x * 5, w) - j.rate.z * 0.25, -1, 1);
-      yaw = clamp(yaw + l.x * 3 * (1 - w), -1, 1);
+    } else ({ pitch, roll, yaw } = steerToward(j, flight.aim, yaw));
+  } else if (j) {
+    jetFwd(j, flight.aim);
+    if (!j.grounded) {
+      resp = 8;   // the jet answers the stick a little quicker and stops turning sooner when you let go
+      // aim help: with a rival near the nose the controls get finer so you can hold the pipper on it
+      if (rivalNearNose(j, jetFwd(j, new THREE.Vector3()), 0.1, 900)) { pitch *= 0.6; yaw *= 0.6; }
+      // hands off the stick: after a moment the wings roll back to level, from upside down too
+      flight.handsOff = Math.abs(pitch) < 0.06 && Math.abs(roll) < 0.06 ? flight.handsOff + dt : 0;
+      if (flight.handsOff > 0.35) {
+        const r = jetRight(j, new THREE.Vector3()).y, u = jetUp(j, new THREE.Vector3()).y;
+        roll = clamp((u > 0 ? r * 1.6 : Math.sign(r || 1)) + j.rate.z * 0.2, -0.7, 0.7) * Math.min(1, (flight.handsOff - 0.35) * 3);
+      }
+      // past the edge of the airspace the autopilot takes over and turns you back toward the field
+      const er = Math.hypot(j.pos.x, j.pos.z);
+      if (er > 2300) {
+        const f = jetFwd(j, new THREE.Vector3()), cx = -j.pos.x / er, cz = -j.pos.z / er, h = Math.hypot(f.x, f.z) || 1;
+        if (f.x * cx + f.z * cz < 0) { const side = Math.sign(-f.z * cx + f.x * cz) || 1; _jv3.set(-f.z / h * side, 0.05, f.x / h * side); }
+        else _jv3.set(cx, 0.05, cz);
+        const s = steerToward(j, _jv3.normalize(), 0), w = clamp((er - 2300) / 120, 0, 1);
+        pitch = lerp(pitch, s.pitch, w); roll = lerp(roll, s.roll, w); yaw = lerp(yaw, s.yaw, w);
+      }
     }
-  } else if (j) jetFwd(j, flight.aim);
+  }
+  flight.stick.x = roll; flight.stick.y = pitch;
   const thr = clamp(k('KeyW', 'KeyS') + flight.padThr + (flight.thrUp ? 1 : 0) - (flight.thrDn ? 1 : 0), -1, 1);
   const burner = !!(keys.ShiftLeft || keys.ShiftRight || flight.boost || flight.padBoost);
   const brake = thr < 0 && j && j.throttle < 0.02;
-  return { pitch, roll, yaw, thr, burner, brake };
+  return { pitch, roll, yaw, thr, burner, brake, resp };
 }
 function updateFlight(dt){
   const j = player.jet;
@@ -4645,7 +4718,6 @@ function updateFlight(dt){
   // past the edge of the airspace the jet is steered back toward the field
   const er = Math.hypot(j.pos.x, j.pos.z);
   if (er > 2300 && flight.mode === 'aim') { const k = Math.min(1, (er - 2300) / 60 * dt); flight.aim.lerp(_jv.set(-j.pos.x / er, 0.05, -j.pos.z / er), k).normalize(); }
-  else if (er > 2300) { _jm.lookAt(_jv.set(0, 0, 0), _jv2.set(-j.pos.x, 0, -j.pos.z).normalize(), UP); _jq.setFromRotationMatrix(_jm); j.q.slerp(_jq, Math.min(1, (er - 2300) / 60 * dt)); }
   const fwd = jetFwd(j, new THREE.Vector3());
   // cannons: two barrels converging 350 m ahead
   flight.gunCd -= dt;
@@ -4681,6 +4753,10 @@ function jetGuns(j, fwd){
   const right = jetRight(j, new THREE.Vector3()), from = j.pos.clone().addScaledVector(fwd, 6).addScaledVector(right, flight.gunSide * 1.6);
   const conv = j.pos.clone().addScaledVector(fwd, 350);
   const dir = conv.sub(from).normalize();
+  // aim help: shots bend onto a rival jet close to the line of fire (a wider cone in direct flight and on touch)
+  let mag = null, ma = flight.mode === 'aim' && !isTouch ? 0.012 : 0.03;
+  for (const f of liveJets('rival')) { const to = _jv3.copy(f.pos).sub(from), d = to.length(); if (d > 750) continue; const a = dir.angleTo(to.divideScalar(d)); if (a < ma) { ma = a; mag = f; } }
+  if (mag) dir.copy(mag.pos).sub(from).normalize();
   dir.x += (rand() - 0.5) * 0.012; dir.y += (rand() - 0.5) * 0.012; dir.z += (rand() - 0.5) * 0.012; dir.normalize();
   const range = 750, jh = rayJet(from, dir, range, 7.5);
   let best = jh ? jh.t : range, hitJ = jh && jh.j, hitE = null, hitPt = null, crit = false;
@@ -4708,7 +4784,7 @@ function updateEngineSound(j){
       flight.engine = { f, o, g };
     } catch (e) { return; }
   }
-  const E = flight.engine, t = actx.currentTime, k = j.throttle + (j.burner ? 0.6 : 0);
+  const E = flight.engine, t = actx.currentTime, k = j.throttle + (j.burner ? 0.6 : 0); flight.muted = false;
   E.f.frequency.setTargetAtTime(300 + k * 900, t, 0.1); E.o.frequency.setTargetAtTime(55 + k * 70, t, 0.1);
   E.g.gain.setTargetAtTime(0.08 + k * 0.16, t, 0.1);
 }
@@ -4723,7 +4799,7 @@ function flightCamera(dt){
   const want = aimCam ? j.pos.clone().addScaledVector(flight.aim, -24).add(_jv.set(0, 5.5, 0)) : j.pos.clone().addScaledVector(up, 5.2).addScaledVector(fwd, -22);
   const wantQ = aimCam ? _jq2.setFromRotationMatrix(_jm.lookAt(_jv.set(0, 0, 0), flight.aim, UP)) : j.q;
   if (!flight.camInit) { flight.cam.copy(want); flight.camQ.copy(wantQ); flight.camInit = true; }
-  flight.cam.lerp(want, Math.min(1, dt * (aimCam ? 14 : 9))); flight.camQ.slerp(wantQ, Math.min(1, dt * (aimCam ? 12 : 6)));
+  flight.cam.lerp(want, Math.min(1, dt * (aimCam ? 14 : 12))); flight.camQ.slerp(wantQ, Math.min(1, dt * (aimCam ? 12 : 10)));
   shake = Math.max(0, shake - dt * 2.2); const sh = shake * shake * 0.3;
   camera.position.copy(flight.cam);
   const gy = airFloor(camera.position.x, camera.position.z) + 1.5; if (camera.position.y < gy) camera.position.y = gy;
@@ -4753,7 +4829,10 @@ function updateFlightHud(){
   $('jWarn').classList.toggle('on', flight.mslWarn > 0);
   $('jStall').classList.toggle('on', !j.grounded && fs < 40);
   $('jTake').classList.toggle('on', j.grounded);
-  if (j.grounded) $('jTake').textContent = 'Throttle up · ' + (flight.mode === 'aim' ? (isTouch ? 'drag up' : 'aim up') : 'pull back') + ' to lift off';
+  if (j.grounded) $('jTake').textContent = 'Throttle up · ' + (flight.mode === 'aim' ? (isTouch ? 'drag up' : 'aim up') : pad.active || isTouch ? 'pull back' : 'mouse up') + ' to lift off';
+  // direct flight on desktop: the dot shows which way you are moving the nose (it sits in the middle when you let go)
+  const stk = $('jStick'); stk.style.display = flight.mode === 'aim' || isTouch ? 'none' : '';
+  if (flight.mode !== 'aim') { stk.style.setProperty('--x', (flight.stick.x * 24).toFixed(1) + 'px'); stk.style.setProperty('--y', (-flight.stick.y * 24).toFixed(1) + 'px'); stk.classList.toggle('lvl', flight.handsOff > 0.35); }
   $('jEdge').classList.toggle('on', !!flight.edge);
   hudPoint(j.pos.clone().addScaledVector(fwd, 350), $('jPipper'));
   const aimEl = $('jAim');
@@ -4806,6 +4885,12 @@ function travelTo(id){
       if (def.battle) openDeploy();
     }, 750);
   }, 480);
+}
+function rescuePilot(){
+  // a dropship collects you and sets you down at the arrival point; on the battle world you pick a deployment again
+  player.eject = false; player.vel.set(0, 0, 0); player.pitch = 0;
+  if (loc) { player.pos.fromArray(loc.spawn); player.yaw = loc.yaw; }
+  if (loc && loc.battle) { show('depNote', true); openDeploy(); }
 }
 function respawnHere(){
   resetGame(); if (loc) { player.pos.fromArray(loc.spawn); player.yaw = loc.yaw; }
@@ -4884,7 +4969,7 @@ addEventListener('mousemove', e => {
   if (Math.abs(e.movementX) > 250 || Math.abs(e.movementY) > 250) return;
   if (player.jet) {
     if (flight.mode === 'aim') { aimTurn(e.movementX * 0.0022 * lookSens, e.movementY * 0.0022 * lookSens); return; }
-    const k = 0.0045 * lookSens; flight.mx = clamp(flight.mx + e.movementX * k, -1, 1); flight.my = clamp(flight.my + e.movementY * k, -1, 1); return;
+    const k = 0.011 * lookSens; flight.mx = clamp(flight.mx + e.movementX * k, -1, 1); flight.my = clamp(flight.my + e.movementY * k, -1, 1); return;
   }
   const sens = 0.0022 * lookSens * lerp(1, 0.6, player.ads);
   player.yaw -= e.movementX * sens; player.pitch = clamp(player.pitch - e.movementY * sens, -1.45, 1.45);
@@ -5041,7 +5126,7 @@ function padStatusText(g){
     : 'Controller layout not recognized · open Controller setup to map your buttons';
 }
 addEventListener('gamepadconnected', () => { const g = getPad(); if (g) calibrate(g); $('padStatus').hidden = false; $('padStatus').textContent = padStatusText(g); });
-addEventListener('gamepaddisconnected', () => { if (!getPad()) { $('padStatus').hidden = true; pad.x = pad.y = 0; pad.active = false; firing = mouseFiring; adsHeld = mouseAds; } });
+addEventListener('gamepaddisconnected', () => { if (!getPad()) { $('padStatus').hidden = true; pad.x = pad.y = 0; pad.active = false; flight.padYaw = flight.padThr = 0; flight.padBoost = false; firing = mouseFiring; adsHeld = mouseAds; } });
 
 // ---- remap flow ----
 const remapSteps = () => ACTIONS.map(a => ({ kind: 'btn', ...a })).concat(STICKS.map(s => ({ kind: 'axis', ...s })));
@@ -5126,7 +5211,7 @@ try { padOn = localStorage.getItem('emberdrift.padOn') !== '0'; } catch (e) {}
 function setPadOn(on){
   padOn = on;
   try { localStorage.setItem('emberdrift.padOn', on ? '1' : '0'); } catch (e) {}
-  if (!on) { pad.active = false; pad.x = pad.y = 0; pad.sprint = false; firing = mouseFiring; adsHeld = mouseAds || touchAds; }
+  if (!on) { pad.active = false; pad.x = pad.y = 0; pad.sprint = false; flight.padYaw = flight.padThr = 0; flight.padBoost = false; firing = mouseFiring; adsHeld = mouseAds || touchAds; }
   document.querySelectorAll('.padToggle').forEach(b => { b.textContent = 'Controller: ' + (on ? 'On' : 'Off'); b.setAttribute('aria-pressed', on); });
 }
 document.querySelectorAll('.padToggle').forEach(b => b.addEventListener('click', () => setPadOn(!padOn)));
@@ -5266,14 +5351,25 @@ function updatePlayer(dt){
   const sprint = player.sprinting = (keys.ShiftLeft || keys.ShiftRight || (isTouch && joy.y > 0.95) || pad.sprint) && f > 0 && !adsHeld;
   const speed = (sprint ? 12.5 : 8.2) * lerp(1, 0.6, player.ads) * moveMult();
   fwdV.set(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)); rightV.set(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
-  const tx = (fwdV.x * f + rightV.x * s) * speed, tz = (fwdV.z * f + rightV.z * s) * speed;
+  let tx = (fwdV.x * f + rightV.x * s) * speed, tz = (fwdV.z * f + rightV.z * s) * speed;
+  const out = player.eject && playDist(player.pos.x, player.pos.z) > 1;
+  if (out) {
+    // under the chute outside the battle zone: glide toward the nearest open ground (you can still steer)
+    const np = nearestPlay(player.pos.x, player.pos.z, 2);
+    if (np) { const dx = np[0] - player.pos.x, dz = np[1] - player.pos.z, d = Math.hypot(dx, dz) || 1; tx = dx / d * 22 + tx * 0.4; tz = dz / d * 22 + tz * 0.4; }
+  }
   const acc = player.onGround ? 14 : 4;
   if (player.slideT > 0) { player.slideT -= dt; const k = 1 - Math.min(1, 1.3 * dt); player.vel.x *= k; player.vel.z *= k; }
   else { player.vel.x = lerp(player.vel.x, tx, Math.min(1, acc * dt)); player.vel.z = lerp(player.vel.z, tz, Math.min(1, acc * dt)); }
   player.crouch = lerp(player.crouch, player.slideT > 0 ? 1 : 0, Math.min(1, dt * 12));
   player.vel.y -= 26 * dt;
   // punched out: free fall, then the chute slows you near the ground
-  if (player.eject) { player.vel.y = Math.max(player.vel.y, player.pos.y > 60 ? -45 : -12); if (player.pos.y < 0.5) player.eject = false; }
+  if (player.eject) {
+    player.vel.y = Math.max(player.vel.y, player.pos.y > 60 ? -45 : -12);
+    // touching the hills or the sea outside the zone: a dropship picks you up and you choose where to deploy
+    if (out && player.pos.y + player.vel.y * dt <= Math.max(0, airFloor(player.pos.x, player.pos.z)) + 0.6) { rescuePilot(); return; }
+    if (!out && player.pos.y < 0.5) player.eject = false;
+  }
   player.pos.addScaledVector(player.vel, dt);
   if (player.pos.y <= 0) { if (!player.onGround && player.vel.y < -12) shake = Math.max(shake, 0.15); player.pos.y = 0; player.vel.y = 0; player.onGround = true; player.lifted = false; }
   collide(player.pos, 0.45);
@@ -5504,6 +5600,7 @@ function frame(now){
     updateHud(dt); updateInteract(); if (player.jet) updateFlightHud();
   }
   if (state === 'deploy') { updateEnemies(dt); updateProjectiles(dt); updateBattle(dt); }
+  if (state !== 'play') stopEngine();
   if (state === 'talk') talkCam(dt);
   talkZoom = lerp(talkZoom, state === 'talk' ? 1 : 0, Math.min(1, dt * 4));
   updateFx(dt);
