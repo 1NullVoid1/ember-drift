@@ -15,7 +15,7 @@ const ROOT = path.resolve(__dirname, '..', '..'), THREE_DIR = process.argv[2], O
     const rel = decodeURIComponent(new URL(r.request().url()).pathname.slice(1));
     let html = fs.readFileSync(path.join(ROOT, rel || 'index.html'));
     if (!rel || rel === 'index.html') {
-      html = html.toString().replace("requestAnimationFrame(frame);\n})();", "requestAnimationFrame(frame);\nwindow.__t = { big: () => { const out = []; scene.traverse(o => { if (!o.visible || !(o.isMesh || o.isSprite || o.isPoints)) return; if (o.isMesh && !o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); const r = o.isMesh ? o.geometry.boundingSphere.radius * o.getWorldScale(new THREE.Vector3()).length() / 1.732 : 0; const d = o.getWorldPosition(new THREE.Vector3()).distanceTo(camera.position); if (r > 60 && d < 800 || (o.isSprite && o.scale.x > 20)) out.push((o.geometry ? o.geometry.type : o.type) + ' r' + Math.round(r) + ' d' + Math.round(d) + ' ' + (o.material && o.material.type) + ' parent ' + (o.parent && (o.parent === scene ? 'scene' : o.parent === world ? 'world' : o.parent.type))); }); return out.join(' ; '); }, openGear, openDirector, renderGear, setTab: t => { gearTab = t; renderGear(); }, fill: n => { for (let k = 0; k < n; k++) { const it = rollItem(Math.floor(rand() * 5)); if (k % 2) inv.vault.push(it); else addItem(it); } saveInv(); }, sim: (n, dt) => { dt = dt || 1 / 30; for (let i = 0; i < n; i++) { time += dt; if (player.jet) updateFlight(dt); else updatePlayer(dt); updateEnemies(dt); updateProjectiles(dt); if (loc.battle) updateBattle(dt); updateFx(dt); if (player.jet) flightCamera(dt); } }, travelTo, aimTurn, chooseDeploy, ISLAND, camera, scene, renderer, player, BATTLE, enterJet, exitJet, keys, flight, get interactJet() { return interactJet; }, get state() { return state; }, info: () => JSON.stringify(renderer.info.render), get zone() { return ZONE; }, outposts, enemies, groundY, playDist, airFloor, pad, get near() { return camera.near; }, drop: p => { const L0 = loot.length; while (loot.length === L0 || loot[loot.length - 1].item.kind !== 'weapon') { if (loot.length > L0) { scene.remove(loot.pop().g); } dropLoot(p, 1); } }, show: (type, dist) => { if (window.__m) scene.remove(window.__m); const d = new THREE.Vector3(); camera.getWorldDirection(d); d.y = 0; d.normalize(); const e = buildEnemy(type); e.g.position.copy(camera.position).addScaledVector(d, dist); e.g.position.y = 0; e.g.lookAt(camera.position.x, e.g.position.y, camera.position.z); scene.add(e.g); window.__m = e.g; }, gun: (arch) => { const w = makeWeapon(ARCH[arch].slots[0], 3, 1010, { arch }); inv.equipped[w.slot] = w.uid; inv.items.push(w); player.wslot = WSLOTS.indexOf(w.slot); applyWeaponLook(); } };\n})();");
+      html = html.toString().replace("requestAnimationFrame(frame);\n})();", "requestAnimationFrame(frame);\nwindow.__t = { big: () => { const out = []; scene.traverse(o => { if (!o.visible || !(o.isMesh || o.isSprite || o.isPoints)) return; if (o.isMesh && !o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); const r = o.isMesh ? o.geometry.boundingSphere.radius * o.getWorldScale(new THREE.Vector3()).length() / 1.732 : 0; const d = o.getWorldPosition(new THREE.Vector3()).distanceTo(camera.position); if (r > 60 && d < 800 || (o.isSprite && o.scale.x > 20)) out.push((o.geometry ? o.geometry.type : o.type) + ' r' + Math.round(r) + ' d' + Math.round(d) + ' ' + (o.material && o.material.type) + ' parent ' + (o.parent && (o.parent === scene ? 'scene' : o.parent === world ? 'world' : o.parent.type))); }); return out.join(' ; '); }, openGear, openDirector, renderGear, setTab: t => { gearTab = t; renderGear(); }, fill: n => { for (let k = 0; k < n; k++) { const it = rollItem(Math.floor(rand() * 5)); if (k % 2) inv.vault.push(it); else addItem(it); } saveInv(); }, sim: (n, dt) => { dt = dt || 1 / 30; for (let i = 0; i < n; i++) { time += dt; if (player.jet) updateFlight(dt); else updatePlayer(dt); updateEnemies(dt); updateProjectiles(dt); if (loc.battle) updateBattle(dt); updateFx(dt); if (player.jet) flightCamera(dt); } }, travelTo, aimTurn, chooseDeploy, ISLAND, camera, scene, renderer, player, BATTLE, enterJet, exitJet, keys, flight, get interactJet() { return interactJet; }, get state() { return state; }, info: () => JSON.stringify(renderer.info.render), get zone() { return ZONE; }, outposts, enemies, groundY, playDist, airFloor, pad, get near() { return camera.near; }, studio, hero, heroGun, castClass, refreshHeroGun, world, get inv() { return inv; }, get dirTab() { return dirTab; }, get loc() { return loc; }, drop: p => { const L0 = loot.length; while (loot.length === L0 || loot[loot.length - 1].item.kind !== 'weapon') { if (loot.length > L0) { scene.remove(loot.pop().g); } dropLoot(p, 1); } }, show: (type, dist) => { if (window.__m) scene.remove(window.__m); const d = new THREE.Vector3(); camera.getWorldDirection(d); d.y = 0; d.normalize(); const e = buildEnemy(type); e.g.position.copy(camera.position).addScaledVector(d, dist); e.g.position.y = 0; e.g.lookAt(camera.position.x, e.g.position.y, camera.position.z); scene.add(e.g); window.__m = e.g; }, gun: (arch) => { const w = makeWeapon(ARCH[arch].slots[0], 3, 1010, { arch }); inv.equipped[w.slot] = w.uid; inv.items.push(w); player.wslot = WSLOTS.indexOf(w.slot); applyWeaponLook(); } };\n})();");
       return r.fulfill({ body: html, contentType: 'text/html; charset=utf-8' });
     }
     r.fulfill({ body: html, contentType: rel.endsWith('.jpg') ? 'image/jpeg' : rel.endsWith('.glb') ? 'model/gltf-binary' : 'application/octet-stream' });
@@ -26,7 +26,7 @@ const ROOT = path.resolve(__dirname, '..', '..'), THREE_DIR = process.argv[2], O
   const pre = phone ? 'ph_' : '';
   await p.screenshot({ path: path.join(OUT, pre + 'menu.png') });
   const mode = process.argv[5];
-  const ids = mode === 'guns' || mode === 'models' || mode === 'drops' ? ['steppe'] : mode === 'world' || mode === 'fps' || mode === 'battle' || mode === 'deploy' || mode === 'perf' || mode === 'probe' || mode === 'flight' || mode === 'jets' || mode === 'aitrace' || mode === 'ui' ? [] : ['tower', 'steppe', 'veyra', 'kharun'];
+  const ids = mode === 'guns' || mode === 'models' || mode === 'drops' ? ['steppe'] : mode === 'world' || mode === 'fps' || mode === 'battle' || mode === 'deploy' || mode === 'perf' || mode === 'probe' || mode === 'flight' || mode === 'jets' || mode === 'menus' || mode === 'pose' || mode === 'aitrace' || mode === 'ui' ? [] : ['tower', 'steppe', 'veyra', 'kharun'];
   for (const id of ids) {
     await p.evaluate(id => __t.travelTo(id), id); await p.waitForTimeout(3500);
     await p.evaluate(() => { __t.player.pitch = -0.12; }); await p.waitForTimeout(500);
@@ -180,6 +180,79 @@ const ROOT = path.resolve(__dirname, '..', '..'), THREE_DIR = process.argv[2], O
     console.log('near in flight', await p.evaluate(() => __t.near));
     await p.evaluate(() => __t.travelTo('tower')); await p.waitForFunction(() => __t.state === 'play', null, { timeout: 60000 });
     console.log('near after travel', await p.evaluate(() => __t.near), 'muted', await p.evaluate(() => __t.flight.muted));
+  }
+  if (mode === 'menus') {
+    // title -> character select -> orbit -> Director tabs -> character screen -> subclass screen -> land
+    const shot = n => p.screenshot({ path: path.join(OUT, pre + 'menus_' + n + '.png') });
+    const st = () => p.evaluate(() => __t.state);
+    await p.click('#play'); await p.waitForTimeout(1500);
+    console.log('after play', await st(), await p.evaluate(() => JSON.stringify({ studio: __t.studio.mode, hero: __t.hero.g.visible, sel: !document.getElementById('selectOv').hidden })));
+    await shot('select');
+    await p.keyboard.press('ArrowDown'); await p.waitForTimeout(900); await shot('select2');
+    await p.keyboard.press('ArrowDown'); await p.waitForTimeout(900); await shot('select3');
+    await p.keyboard.press('ArrowDown'); await p.waitForTimeout(300);
+    await p.keyboard.press('Enter'); await p.waitForTimeout(1500);
+    console.log('after login', await st(), await p.evaluate(() => JSON.stringify({ cls: __t.inv.cls, sub: __t.inv.subclass, studio: __t.studio.mode })));
+    await shot('orbit');
+    await p.click('#orbDirector'); await p.waitForTimeout(900);
+    console.log('director', await st(), await p.evaluate(() => __t.dirTab));
+    await shot('dest');
+    for (const tab of ['pass', 'map', 'quests', 'store']) {
+      await p.evaluate(t => document.querySelector('.dtab[data-tab="' + t + '"]').click(), tab); await p.waitForTimeout(500); await shot(tab);
+    }
+    await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+    console.log('back to', await st());
+    await p.click('#orbGear'); await p.waitForTimeout(1500);
+    console.log('gear', await st(), await p.evaluate(() => JSON.stringify({ studio: __t.studio.mode, armed: __t.hero.armed, gun: __t.heroGun.children.length })));
+    await shot('char');
+    await p.evaluate(() => document.querySelector('#gLeft .cwep').click()); await p.waitForTimeout(700); await shot('drawer');
+    await p.evaluate(() => document.querySelector('#gLeft .csub').click()); await p.waitForTimeout(700); await shot('sub');
+    await p.evaluate(() => { const b = [...document.querySelectorAll('#subGroups .sopt')].find(b => b.getAttribute('aria-pressed') === 'false' && !b.classList.contains('fixed')); if (b) b.click(); }); await p.waitForTimeout(400); await shot('sub2');
+    await p.keyboard.press('Escape'); await p.waitForTimeout(300); await p.keyboard.press('Escape'); await p.waitForTimeout(300); await p.keyboard.press('Escape'); await p.waitForTimeout(600);
+    console.log('closed gear', await st());
+    await p.keyboard.press('KeyL'); await p.waitForFunction(() => __t.state === 'play', null, { timeout: 60000 }); await p.waitForTimeout(1500);
+    console.log('landed', await p.evaluate(() => JSON.stringify({ loc: __t.loc && __t.loc.id, studio: __t.studio.mode, hud: !document.getElementById('hud').hidden, world: __t.world.visible, fov: __t.camera.fov, near: __t.near })));
+    await shot('landed');
+    await p.evaluate(() => __t.travelTo('steppe')); await p.waitForFunction(() => __t.state === 'play', null, { timeout: 60000 }); await p.waitForTimeout(800);
+    console.log('class ability', await p.evaluate(() => { const r = []; __t.castClass(); r.push(__t.player.clsCd.toFixed(1)); __t.sim(60); return r.join(' '); }));
+    await p.evaluate(() => { __t.player.pitch = -0.1; }); await p.waitForTimeout(400); await shot('steppe');
+    // back to orbit from the pause menu, then swap to the Seer and back: each character keeps its own save
+    const before = await p.evaluate(() => __t.inv.items.length + ' items, sub ' + __t.inv.subclass);
+    await p.evaluate(() => { __t.inv.items.push(Object.assign({}, __t.inv.items[0], { uid: 'test-extra' })); });
+    // the software renderer runs the battle-worn steppe at about 1 fps on the desktop size, too slow for
+    // Playwright's click checks, so check the Orbit button is the topmost element and click it directly
+    await p.keyboard.press('KeyP'); await p.waitForTimeout(900);
+    const hit = await p.evaluate(() => { const b = document.getElementById('orbitBtn').getBoundingClientRect(), e = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return e && (e.id || e.className || e.tagName); });
+    console.log('paused', await st(), 'hit', hit); if (hit !== 'orbitBtn') throw new Error('the Orbit button is covered by ' + hit);
+    await p.evaluate(() => document.getElementById('orbitBtn').click()); await p.waitForTimeout(1200);
+    console.log('orbit from pause', await st());
+    await p.keyboard.press('Escape'); await p.waitForTimeout(600); await p.keyboard.press('ArrowUp'); await p.waitForTimeout(300); await p.keyboard.press('Enter'); await p.waitForTimeout(900);
+    console.log('seer', await p.evaluate(() => JSON.stringify({ state: __t.state, cls: __t.inv.cls, sub: __t.inv.subclass, items: __t.inv.items.length })));
+    await shot('orbit_seer');
+    await p.click('#orbGear'); await p.waitForTimeout(1200); await shot('char_seer'); await p.keyboard.press('Escape'); await p.waitForTimeout(400);
+    await p.keyboard.press('Escape'); await p.waitForTimeout(600); await p.keyboard.press('ArrowDown'); await p.waitForTimeout(300); await p.keyboard.press('Enter'); await p.waitForTimeout(900);
+    console.log('outrider again', await p.evaluate(() => __t.inv.cls + ' ' + __t.inv.items.length + ' items, sub ' + __t.inv.subclass), 'was', before, '+1 test item');
+    console.log('saves', await p.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('emberdrift.save')).join(',')));
+  }
+  if (mode === 'pose') {
+    // the hero holding her gun on the character screen, from the front, the side and close up; POSE='{"pos":[x,y,z],...}' tries a hold
+    await p.click('#play'); await p.waitForTimeout(900); await p.keyboard.press('Enter'); await p.waitForTimeout(900);
+    await p.click('#orbGear'); await p.waitForTimeout(1500);
+    if (process.env.POSE) await p.evaluate(P => { const h = __t.hero.hold; for (const k in P) { if (h[k] && h[k].isVector3) h[k].fromArray(P[k]); else h[k] = P[k]; } }, JSON.parse(process.env.POSE));
+    if (process.env.GUN) await p.evaluate(a => { __t.gun(a); __t.refreshHeroGun(); }, process.env.GUN);
+    console.log('bones', await p.evaluate(() => { const h = __t.hero; h.g.updateMatrixWorld(true); const out = {}; for (const k of ['hips', 'chest', 'head', 'upperarmR', 'forearmR', 'handR', 'upperarmL', 'forearmL', 'handL']) { const b = h.bones[k]; if (!b) continue; const v = b.getWorldPosition(new THREE.Vector3()); h.g.worldToLocal(v); out[k] = v.toArray().map(x => +x.toFixed(3)); } return JSON.stringify(out) + ' gun parts ' + __t.heroGun.children.length; }));
+    // POSES='[{"n":"a","handR":[0,1,0]},...]' shoots a close-up per variant
+    if (process.env.POSES) {
+      await p.evaluate(c => { __t.studio.cam.fromArray(c); __t.studio.camGoal.fromArray(c); }, [-0.9, 1.15, 2.1]); await p.waitForTimeout(400);
+      for (const P of JSON.parse(process.env.POSES)) {
+        await p.evaluate(P => { const h = __t.hero.hold; for (const k in P) { if (k === 'n') continue; if (h[k] && h[k].isVector3) h[k].fromArray(P[k]); else h[k] = P[k]; } }, P); await p.waitForTimeout(300);
+        await p.screenshot({ path: path.join(OUT, pre + 'pv_' + P.n + '.png'), clip: phone ? { x: 200, y: 0, width: 444, height: 390 } : { x: 320, y: 40, width: 560, height: 635 } });
+      }
+    }
+    for (const [n, cam] of [['front', [0, 1.05, 4.7]], ['side', [4.7, 1.05, 0.4]], ['close', [-0.9, 1.15, 2.1]]]) {
+      await p.evaluate(c => { __t.studio.cam.fromArray(c); __t.studio.camGoal.fromArray(c); }, cam); await p.waitForTimeout(500);
+      await p.screenshot({ path: path.join(OUT, pre + 'pose_' + n + '.png'), clip: phone ? { x: 200, y: 0, width: 444, height: 390 } : { x: 320, y: 40, width: 560, height: 635 } });
+    }
   }
   if (mode === 'probe') {
     await p.evaluate(() => __t.travelTo('rift')); await p.waitForFunction(() => __t.state === 'deploy', null, { timeout: 60000 }); await p.evaluate(() => __t.chooseDeploy(0));

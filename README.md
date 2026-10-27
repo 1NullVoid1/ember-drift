@@ -2,15 +2,18 @@
 
 An original sci-fi looter shooter that runs in the browser, built mobile-first with Three.js. It's a personal project inspired by the feel of games like Destiny. Every name, model and line of dialogue is original.
 
-**Play:** https://1nullvoid1.github.io/ember-drift/ (once GitHub Pages is turned on)
+**Play:** https://1nullvoid1.github.io/ember-drift/
 
 ![Director](screenshots/director.png)
 
 ## What's in it
+- Three classes (Seer, Outrider and Bulwark), each with its own save, picked from a character select screen
+- An orbit screen, a character screen where your character shows off her equipped gun, and a subclass screen for supers, abilities, aspects and shards
 - **Emberhold**, a social hub where you talk to Commander Rho Kestrel, Tessa Morrow the gunsmith and Old Fen the archivist
-- **The Director**, a galaxy map for travelling to the Shattered Steppe, Frostfall Reach and Kharun Deep
+- **The Director**, a galaxy map for travelling to the Shattered Steppe, Frostfall Reach and Kharun Deep, with tabs for the rewards pass, a local map, quests and the store
+- A battle world with jets you can fly with mouse aim or direct stick
 - A quest system with a three-chapter story (placeholder for now) and a repeatable bounty
-- Eight weapon types with perks, exotics, armor stats and two subclasses
+- Eight weapon types with perks, exotics, armor stats and two subclasses (Cinder and Tempest)
 - A hooded ritualist player character with full first-person arm animations
 - Touch controls, keyboard and mouse, and gamepad support with a remap screen
 - An expansion framework, with **The Hollow Crown** as the first planned DLC

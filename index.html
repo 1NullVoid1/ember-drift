@@ -336,7 +336,7 @@ body.social #tTalk.on{display:flex}
 .dirme b{color:var(--crit);font-size:18px;letter-spacing:.06em;margin-left:6px}
 .dirme .cin b{color:var(--solar)}
 #dirClose{padding:9px 14px;font-size:13px}
-#dirMap{position:absolute;inset:60px 0 0 0}
+#dirMap{position:absolute;inset:60px 0 92px 0}
 #dirMap svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .dnode{position:absolute;transform:translate(-50%,-50%);appearance:none;background:none;border:0;padding:0;cursor:pointer;color:var(--ink);display:grid;justify-items:center;gap:10px;transition:transform .25s cubic-bezier(.2,.8,.2,1)}
 .dnode:hover{transform:translate(-50%,-50%) scale(1.07)}
@@ -387,7 +387,7 @@ body.social #tTalk.on{display:flex}
 @media (max-height:520px),(max-width:900px){
   .dirtop{padding-top:calc(6px + env(safe-area-inset-top,0px));padding-bottom:6px}
   .dtab{font-size:12px;letter-spacing:.16em;padding:8px 8px}
-  #dirMap{inset:48px 280px 0 0}
+  #dirMap{inset:48px 280px 62px 0}
   #dirPane{inset:52px 0 0 0}
   #dirInfo{top:48px;right:0;bottom:0;width:280px;border:0;border-left:1px solid var(--line);border-top:3px solid var(--rc,var(--ink));overflow-y:auto;align-content:start;padding:12px 14px calc(12px + env(safe-area-inset-bottom,0px));padding-right:calc(14px + env(safe-area-inset-right,0px))}
   #dirInfo h3{font-size:22px}#dirInfo p{display:block;font-size:12px}
@@ -410,6 +410,245 @@ body.social #tTalk.on{display:flex}
 @media (prefers-reduced-motion: reduce){#loadOv .streaks,#dirOv::before,.dmark,.packart::after{animation:none}}
 #tMap{width:52px;height:44px;left:50%;margin-left:-82px;top:calc(40px + env(safe-area-inset-top,0px));font-size:10px;border-radius:4px}
 #tTalk{width:96px;height:96px;right:calc(26px + env(safe-area-inset-right,0px));bottom:calc(46px + env(safe-area-inset-bottom,0px));font-size:15px;border-color:var(--crit);color:var(--crit)}
+/* ---------- character select, orbit, character and subclass screens ---------- */
+/* shared: hint bar along the bottom edge, like a console menu */
+.hintbar{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:flex-end;gap:6px 22px;flex-wrap:wrap;padding:10px calc(22px + env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) calc(22px + env(safe-area-inset-left,0px));background:linear-gradient(0deg,rgba(4,5,10,.8),transparent)}
+.hint{appearance:none;background:none;border:0;color:var(--ink);font:600 12px/1 var(--display);letter-spacing:.18em;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;gap:8px;padding:6px 0}
+.hint kbd{font:700 11px/1 var(--display);border:1px solid var(--line);padding:4px 6px;color:var(--dim);background:rgba(0,0,0,.35)}
+.hint:hover{color:var(--solar)}
+#selectOv,#orbitOv{position:fixed;inset:0;z-index:40;pointer-events:none}
+#selectOv>*,#orbitOv>*{pointer-events:auto}
+#selectOv:not([hidden]),#orbitOv:not([hidden]),#subOv:not([hidden]){animation:ovIn .35s ease-out}
+
+/* character select: name top left, the class banners down the right, the log-in card beneath them */
+#selectOv{background:linear-gradient(90deg,transparent 40%,rgba(4,5,10,.55) 70%,rgba(4,5,10,.8))}
+.selHead{position:absolute;top:calc(22px + env(safe-area-inset-top,0px));left:calc(26px + env(safe-area-inset-left,0px));display:grid;gap:6px}
+.selName{font:700 clamp(30px,4.4vw,52px)/.9 var(--display);letter-spacing:.06em;text-transform:uppercase}
+.selClan{font:600 12px/1 var(--display);letter-spacing:.28em;text-transform:uppercase;color:var(--cc,var(--solar))}
+#selList{position:absolute;right:calc(26px + env(safe-area-inset-right,0px));top:calc(64px + env(safe-area-inset-top,0px));width:min(430px,44vw);display:grid;gap:8px}
+.selBan{appearance:none;cursor:pointer;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;padding:12px 16px 12px 12px;text-align:left;color:var(--ink);border:1px solid var(--line);background:rgba(8,10,18,.72);font-family:var(--body);clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,0 100%);transition:background .2s,border-color .2s,padding .2s}
+.selBan:hover{border-color:var(--cc)}
+.selBan[aria-pressed="true"]{padding-top:20px;padding-bottom:20px;border-color:var(--cc);background:linear-gradient(90deg,color-mix(in srgb,var(--cc) 34%,transparent),rgba(8,10,18,.82) 70%);box-shadow:inset 4px 0 0 var(--cc)}
+.selGlyph{width:46px;height:46px;color:var(--cc);display:grid;place-items:center;filter:drop-shadow(0 0 8px color-mix(in srgb,var(--cc) 60%,transparent))}
+.selGlyph svg{width:100%;height:100%}
+.selTxt{display:grid;gap:5px;min-width:0}
+.selTxt b{font:700 24px/1 var(--display);letter-spacing:.08em;text-transform:uppercase}
+.selTxt span{font:600 11px/1.2 var(--display);letter-spacing:.18em;text-transform:uppercase;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.selPow{display:grid;justify-items:end;font:700 26px/1 var(--display);color:var(--crit);letter-spacing:.04em}
+.selPow i{font-style:normal;font-size:13px;margin-right:4px;vertical-align:4px}
+.selPow small{font:600 10px/1 var(--display);letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-top:4px}
+.selCard{position:absolute;right:calc(26px + env(safe-area-inset-right,0px));bottom:calc(58px + env(safe-area-inset-bottom,0px));width:min(430px,44vw);display:grid;gap:10px;padding:14px 16px;background:rgba(8,10,18,.82);border:1px solid var(--line);border-top:3px solid var(--cc,var(--ink))}
+.selCardTop{font:700 13px/1 var(--display);letter-spacing:.3em;text-transform:uppercase;color:var(--dim)}
+.selCard p{margin:0;color:var(--ink);opacity:.82;font-size:13.5px;line-height:1.5}
+.selCardBtns{display:flex;gap:10px;align-items:center}
+#selGo{flex:1;justify-self:stretch}
+
+/* orbit: the fireteam card top right, two big buttons bottom left */
+#orbitOv{background:linear-gradient(0deg,rgba(4,5,10,.55),transparent 35%)}
+.orbitCard{position:absolute;top:calc(18px + env(safe-area-inset-top,0px));right:calc(22px + env(safe-area-inset-right,0px));display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 14px 10px 10px;min-width:min(330px,60vw);background:rgba(8,10,18,.72);border:1px solid var(--line);border-left:3px solid var(--cc)}
+.orbitCard .selGlyph{width:38px;height:38px}
+.oTxt{display:grid;gap:4px}
+.oTxt b{font:700 18px/1 var(--display);letter-spacing:.1em;text-transform:uppercase}
+.oTxt span{font:600 11px/1 var(--display);letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.orbitCard .selPow{font-size:22px}
+.orbitBtns{position:absolute;left:calc(26px + env(safe-area-inset-left,0px));bottom:calc(64px + env(safe-area-inset-bottom,0px));display:grid;gap:10px;width:min(330px,42vw)}
+.obtn{appearance:none;cursor:pointer;text-align:left;padding:16px 20px;color:var(--ink);background:rgba(8,10,18,.6);border:1px solid var(--line);border-left:3px solid var(--solar);font:700 20px/1 var(--display);letter-spacing:.24em;text-transform:uppercase;backdrop-filter:blur(4px);clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%);transition:background .15s,padding .15s}
+.obtn:hover,.obtn:focus-visible{background:rgba(255,179,92,.2);padding-left:26px;outline:none}
+#orbitOv .hintbar{justify-content:flex-end}
+
+/* character screen: the overlay clears so the hero shows through between the side columns */
+#gearOv.studio{background:linear-gradient(90deg,rgba(4,5,10,.82),rgba(4,5,10,.25) 30%,transparent 42%,transparent 58%,rgba(4,5,10,.25) 70%,rgba(4,5,10,.82));backdrop-filter:none}
+#gearOv.studio .gearwrap{max-width:none}
+#gearOv.studio .gearhead{border-bottom-color:transparent;background:linear-gradient(180deg,rgba(4,5,10,.7),transparent)}
+#gearOv.studio .gearbody{grid-template-columns:minmax(240px,300px) minmax(0,1fr) minmax(250px,310px)}
+#gearOv.studio #gMid{position:relative;align-content:end;touch-action:none;cursor:grab}
+.chead{margin-top:6px}
+.csub{appearance:none;cursor:pointer;display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;padding:6px 4px;background:none;border:0;color:var(--ink);text-align:left;font-family:var(--body)}
+.csubD{width:74px;height:74px;display:grid;place-items:center;transform:rotate(45deg) scale(.82);border:2px solid var(--ec);background:radial-gradient(circle,color-mix(in srgb,var(--ec) 45%,#0a0a10),#0a0a10 75%);box-shadow:0 0 22px color-mix(in srgb,var(--ec) 45%,transparent);transition:transform .2s}
+.csubD svg{width:58%;height:58%;transform:rotate(-45deg);color:var(--ec)}
+.csub:hover .csubD,.csub:focus-visible .csubD{transform:rotate(45deg) scale(.9)}
+.csubT{display:grid;gap:5px}
+.csubT b{font:700 28px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--ec)}
+.csubT>span:last-child{font:600 11px/1 var(--display);letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.cwep,.carm{position:relative;appearance:none;cursor:pointer;display:grid;align-items:center;text-align:left;color:var(--ink);font-family:var(--body);background:rgba(8,10,18,.6);border:1px solid var(--line);border-left:3px solid var(--rc);min-width:0}
+.cwep{grid-template-columns:96px 1fr auto;gap:10px;padding:8px 10px}
+.cwep[aria-pressed="true"],.carm[aria-pressed="true"]{background:rgba(255,255,255,.14);border-color:var(--rc)}
+.cwep.held::before{content:'';position:absolute;left:-10px;top:50%;width:6px;height:6px;margin-top:-3px;background:var(--ink);transform:rotate(45deg)}
+.cwIc{color:var(--rc);height:40px;display:grid;place-items:center}
+.cwIc svg{width:100%;height:100%}
+.cwT,.caT{display:grid;gap:3px;min-width:0}
+.cwT b,.caT b{font:600 14px/1.1 var(--display);letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cwT b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cwT span,.caT span{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cwP{font:700 17px/1 var(--display);color:var(--crit);display:flex;align-items:center;gap:6px}
+.edot{width:9px;height:9px;border-radius:50%;background:var(--ec);box-shadow:0 0 6px var(--ec)}
+.cpow{display:flex;align-items:baseline;justify-content:flex-end;gap:10px;padding:2px 2px 6px;border-bottom:1px solid var(--line)}
+.cpow b{font:700 34px/1 var(--display);color:var(--crit);letter-spacing:.04em}
+.carmor{display:grid;gap:6px}
+.carm{grid-template-columns:42px 1fr;gap:10px;padding:6px 10px 6px 6px}
+.caIc{width:42px;height:42px;color:var(--rc);background:rgba(255,255,255,.05);display:grid;place-items:center}
+.caIc svg{width:72%;height:72%}
+.cstats{display:grid;gap:6px}
+.cstat{display:grid;grid-template-columns:18px 76px 1fr 30px;gap:8px;align-items:center;font-size:12px;color:var(--dim)}
+.csIc{width:16px;height:16px;color:var(--ink);display:grid;place-items:center}
+.csIc svg{width:100%;height:100%}
+.cstat i{height:5px;background:rgba(255,255,255,.12);position:relative}
+.cstat i::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--v);background:var(--ink)}
+.cstat b{font:600 14px/1 var(--display);color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+.chint{justify-self:center;pointer-events:none;opacity:.7;padding-bottom:6px}
+.cdrawer{align-self:stretch;display:grid;gap:10px;align-content:start;overflow-y:auto;overscroll-behavior:contain;max-height:100%;padding:12px;background:rgba(6,8,14,.9);border:1px solid var(--line);backdrop-filter:blur(8px);cursor:auto;animation:panelIn .25s ease-out}
+.cdrawer .glist{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+#gearOv.studio #gMid:has(.cdrawer){align-content:stretch}
+
+/* subclass screen */
+#subOv{position:fixed;inset:0;z-index:45;overflow:hidden;display:grid;grid-template-rows:auto 1fr auto;background:radial-gradient(ellipse at 75% 40%,color-mix(in srgb,var(--ec) 30%,transparent),transparent 60%),radial-gradient(ellipse at 10% 110%,color-mix(in srgb,var(--ec) 22%,transparent),transparent 55%),linear-gradient(160deg,#0a0910,#05060a 70%);padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+.subBg{position:absolute;right:-6vw;top:50%;width:min(70vh,52vw);height:min(70vh,52vw);transform:translateY(-50%);color:var(--ec);opacity:.07;pointer-events:none}
+.subBg svg{width:100%;height:100%}
+.subTop{position:relative;display:flex;align-items:center;gap:16px;padding:14px 22px;border-bottom:1px solid var(--line)}
+.subGlyph{width:52px;height:52px;flex:none;display:grid;place-items:center;transform:rotate(45deg) scale(.8);border:2px solid var(--ec);background:rgba(0,0,0,.4)}
+.subGlyph svg{width:60%;height:60%;transform:rotate(-45deg);color:var(--ec)}
+.subTop h2{margin:0;font:700 34px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--ec)}
+.subSwitch{display:flex;gap:6px;margin-left:auto}
+.subBody{position:relative;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,340px);gap:24px;padding:16px 22px}
+.subGroups{min-height:0;overflow-y:auto;overscroll-behavior:contain;display:grid;gap:18px;align-content:start;padding-right:6px;scrollbar-width:thin}
+.sgroup{display:grid;gap:10px}
+.sghead{display:flex;align-items:baseline;gap:12px;font:700 13px/1 var(--display);letter-spacing:.32em;text-transform:uppercase;color:var(--ink);border-bottom:1px solid var(--line);padding-bottom:7px}
+.sghead b{font-size:11px;color:var(--dim);letter-spacing:.16em}
+.srows{display:grid;gap:10px}
+.sgroup.wide .srows{display:flex;flex-wrap:wrap;gap:8px 30px}
+.sgroup.wide .srow{display:grid;gap:4px;justify-items:start}
+.sgroup.wide .srow>.lbl{width:auto}
+.srow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.srow>.lbl{width:64px}
+.sopts{display:flex;gap:10px;flex-wrap:wrap}
+.sopt{appearance:none;cursor:pointer;width:58px;height:58px;padding:11px;color:var(--dim);background:rgba(255,255,255,.05);border:1px solid var(--line);transform:rotate(45deg) scale(.84);transition:transform .15s,background .15s,color .15s;margin:4px}
+.sopt svg{width:100%;height:100%;transform:rotate(-45deg)}
+.sopt.big{width:84px;height:84px;padding:18px}
+.sopt:hover,.sopt:focus-visible{transform:rotate(45deg) scale(.95);color:var(--ink);outline:none;border-color:var(--ink)}
+.sopt[aria-pressed="true"]{color:#0a0a10;background:var(--ec);border-color:var(--ec);box-shadow:0 0 18px color-mix(in srgb,var(--ec) 55%,transparent)}
+.sopt.fixed{cursor:default}
+.subInfo{align-self:start;display:grid;gap:10px;padding:16px 18px;background:rgba(6,8,14,.78);border:1px solid var(--line);border-top:3px solid var(--ec)}
+.subInfo h3{margin:0;font:700 26px/1 var(--display);letter-spacing:.06em;text-transform:uppercase}
+.subInfo p{margin:0;color:var(--dim);font-size:14px;line-height:1.55}
+.sstate{font:700 11px/1 var(--display);letter-spacing:.24em;text-transform:uppercase;color:var(--dim)}
+.sstate.on{color:var(--ec)}
+.subStats{position:relative;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;padding:10px 22px 14px;border-top:1px solid var(--line);background:rgba(4,5,10,.55)}
+.sstat{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto auto;column-gap:8px;row-gap:3px;align-items:center}
+.sstat .csIc{grid-row:1/3}
+.sstat b{font:700 22px/1 var(--display)}
+.sstat .lbl{grid-column:2}
+.sse{grid-column:1/-1;font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* director: rewards pass, local map and the activity row */
+.pass{max-width:1100px;margin:0 auto;display:grid;gap:14px}
+.passHead{display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:center;padding:14px 18px;background:rgba(10,12,20,.75);border:1px solid var(--line);border-left:3px solid var(--crit)}
+.passRank{display:grid;justify-items:center;gap:4px;padding-right:16px;border-right:1px solid var(--line)}
+.passRank b{font:700 48px/1 var(--display);color:var(--crit)}
+.passInfo{display:grid;gap:8px;min-width:0}
+.passInfo h4{margin:0;font:700 24px/1 var(--display);letter-spacing:.06em;text-transform:uppercase}
+.passBar{height:6px;background:rgba(255,255,255,.12);position:relative}
+.passBar i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,var(--solar),var(--crit))}
+.passTrack{display:grid;grid-auto-flow:column;grid-auto-columns:116px;gap:8px;overflow-x:auto;overscroll-behavior:contain;padding:4px 2px 12px;scroll-behavior:smooth;scrollbar-width:thin}
+.passCard{appearance:none;display:grid;justify-items:center;gap:8px;padding:12px 8px;background:rgba(10,12,20,.75);border:1px solid var(--line);border-bottom:3px solid var(--rc);color:var(--ink);font-family:var(--body);cursor:default;text-align:center}
+.passCard.big{background:linear-gradient(180deg,color-mix(in srgb,var(--rc) 22%,transparent),rgba(10,12,20,.8))}
+.passCard.ready{cursor:pointer;border-color:var(--crit);box-shadow:0 0 0 1px var(--crit),0 0 16px rgba(255,216,74,.25)}
+.passCard.ready:hover{background:rgba(255,216,74,.14)}
+.passCard.got{opacity:.5}
+.passCard.locked .passIc{opacity:.55}
+.passN{font:700 13px/1 var(--display);letter-spacing:.2em;color:var(--dim)}
+.passIc{width:46px;height:46px;color:var(--rc)}
+.passIc svg{width:100%;height:100%}
+.passT{font:600 12px/1.2 var(--display);letter-spacing:.06em;text-transform:uppercase;min-height:2.4em}
+.passS{font:700 10px/1 var(--display);letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.passCard.ready .passS{color:var(--crit)}
+.passHow{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:4px 18px}
+.passHow div{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:6px 0;border-top:1px solid var(--line);color:var(--dim)}
+.passHow b{font:600 13px/1.2 var(--display);letter-spacing:.1em;color:var(--ink)}
+.lmap{max-width:1100px;height:100%;margin:0 auto;display:grid;grid-template-rows:auto 1fr auto;gap:10px;min-height:340px}
+.lmapHead h4{margin:4px 0 0;font:700 26px/1 var(--display);letter-spacing:.06em;text-transform:uppercase}
+.lmapSvg{width:100%;height:100%;min-height:240px;background:radial-gradient(ellipse at 50% 50%,rgba(40,34,60,.55),rgba(6,7,12,.9));border:1px solid var(--line)}
+.lgrid{stroke:rgba(255,255,255,.06)}
+.lpath{stroke:rgba(232,214,180,.22);stroke-linecap:round}
+.larea{fill:rgba(232,214,180,.13);stroke:rgba(232,214,180,.5)}
+.lout{fill:#d8c8a8}
+.lout.hot{fill:#ff6a4a}
+.lnpc{fill:var(--arc)}
+.lfoe{fill:#ff5a4a}
+.lme{fill:#fff;stroke:#000;stroke-width:.5px;vector-effect:non-scaling-stroke}
+.ltxt{fill:var(--ink);text-anchor:middle;font-family:var(--display);letter-spacing:.12em;text-transform:uppercase;paint-order:stroke;stroke:rgba(0,0,0,.7);stroke-width:3px;vector-effect:non-scaling-stroke}
+.ltxt.npc{fill:var(--arc)}
+.lmapLeg{display:flex;flex-wrap:wrap;gap:6px 18px;font:600 11px/1 var(--display);letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+.lmapLeg span{display:flex;align-items:center;gap:7px}
+.lmapLeg i{width:10px;height:10px;display:inline-block;border-radius:50%;background:#fff}
+.lmapLeg i.lout{border-radius:0;transform:rotate(45deg);background:#d8c8a8}.lmapLeg i.lout.hot{background:#ff6a4a}.lmapLeg i.lfoe{background:#ff5a4a}.lmapLeg i.lnpc{background:var(--arc)}
+.hexRow{position:absolute;left:calc(22px + env(safe-area-inset-left,0px));bottom:calc(-74px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;z-index:2}
+.hex{appearance:none;background:none;border:0;padding:0;cursor:pointer;display:grid;justify-items:center;gap:6px;color:var(--ink)}
+.hexIc{width:58px;height:66px;display:grid;place-items:center;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);background:rgba(238,241,246,.16);position:relative;transition:background .15s}
+.hexIc::before{content:'';position:absolute;inset:2px;clip-path:inherit;background:rgba(8,10,18,.9)}
+.hexIc svg{position:relative;width:28px;height:28px}
+.hex:hover .hexIc,.hex:focus-visible .hexIc{background:var(--ink)}
+.hex.sel .hexIc{background:var(--solar)}
+.hex.sel .hexIc svg{color:var(--solar)}
+.hex.pvp .hexIc svg{color:#ff8a6a}
+.hex.exp .hexIc svg{color:#ff5a5a}
+.hex.hot .hexIc{background:var(--crit);animation:mark 1.6s ease-in-out infinite}
+.hexL{font:700 10px/1 var(--display);letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+
+/* class ability on the HUD and the touch button */
+#abClass .fill{background:color-mix(in srgb,var(--clsc,#ffb36a) 40%,transparent)}
+#abClass.ready{border-color:var(--clsc,#ffb36a)}
+#tClass{width:52px;height:52px;right:calc(196px + env(safe-area-inset-right,0px));bottom:calc(64px + env(safe-area-inset-bottom,0px));font-size:10px}
+#tClass.cd{opacity:.45}
+body.social #tClass,body.flying #tClass{display:none}
+
+@media (max-height:520px){
+  .selHead{top:calc(10px + env(safe-area-inset-top,0px));gap:3px}
+  .selName{font-size:28px}
+  #selList{top:calc(12px + env(safe-area-inset-top,0px));gap:5px;width:min(400px,50vw)}
+  .selBan{padding:6px 12px 6px 8px;gap:10px}
+  .selBan[aria-pressed="true"]{padding-top:10px;padding-bottom:10px}
+  .selGlyph{width:32px;height:32px}
+  .selTxt b{font-size:18px}
+  .selPow{font-size:20px}
+  .selCard{bottom:calc(40px + env(safe-area-inset-bottom,0px));width:min(400px,50vw);padding:8px 12px;gap:6px}
+  .selCard p{font-size:12px;line-height:1.35}
+  .selCardTop{display:none}
+  .hintbar{padding-top:4px;padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))}
+  .orbitBtns{bottom:calc(44px + env(safe-area-inset-bottom,0px));gap:6px}
+  .obtn{padding:11px 16px;font-size:15px}
+  #gearOv.studio .gearbody{grid-template-columns:minmax(200px,240px) minmax(0,1fr) minmax(200px,240px);gap:8px;padding:6px 10px}
+  .csubD{width:52px;height:52px}
+  .csubT b{font-size:20px}
+  .cwep{grid-template-columns:62px 1fr auto;padding:5px 8px;gap:8px}
+  .cwIc{height:28px}
+  .carm{grid-template-columns:30px 1fr;padding:4px 8px 4px 4px}
+  .caIc{width:30px;height:30px}
+  .cpow b{font-size:24px}
+  .cstats,.carmor{gap:4px}
+  .cstat{grid-template-columns:14px 62px 1fr 26px;font-size:11px}
+  .subTop{padding:8px 16px;gap:12px}
+  .subTop h2{font-size:24px}
+  .subGlyph{width:38px;height:38px}
+  .subBody{padding:10px 16px;gap:14px;grid-template-columns:minmax(0,1fr) minmax(200px,250px)}
+  .subGroups{gap:10px;grid-template-columns:auto minmax(0,1fr);grid-auto-flow:row dense;column-gap:28px}
+  .sg-abilities,.sg-shards{grid-column:1/-1}
+  .sgroup.wide .srows{gap:4px 20px}
+  .sopt{width:44px;height:44px;padding:8px;margin:2px}
+  .sopt.big{width:56px;height:56px;padding:11px}
+  .subInfo{padding:10px 12px;gap:6px}
+  .subInfo h3{font-size:19px}.subInfo p{font-size:12px}
+  .subStats{padding:6px 16px 8px;gap:6px}
+  .sstat b{font-size:16px}.sse{display:none}
+  .passHead{padding:8px 12px;gap:12px}.passRank b{font-size:32px}.passInfo h4{font-size:18px}
+  .passTrack{grid-auto-columns:92px}
+  .passIc{width:30px;height:30px}
+  .hexRow{bottom:-56px;gap:4px}.hexIc{width:40px;height:46px}.hexIc svg{width:20px;height:20px}.hexL{font-size:8px}
+}
+@media (max-width:720px){
+  #selList,.selCard{width:min(430px,calc(100% - 40px))}
+  .subBody{grid-template-columns:1fr}.subInfo{display:none}
+  .subStats{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
 </style>
 
 <canvas id="view"></canvas>
@@ -434,6 +673,7 @@ body.social #tTalk.on{display:flex}
     <div class="abrow">
       <div class="ab" id="abGren"><div class="fill"></div><span>Q</span></div>
       <div class="ab" id="abMelee"><div class="fill"></div><span>E</span></div>
+      <div class="ab" id="abClass"><div class="fill"></div><span>V</span></div>
     </div>
     <div><div class="lbl" id="superLbl">Storm Burst · F</div><div class="superBar"><i id="superFill"></i></div></div>
   </div>
@@ -466,6 +706,7 @@ body.social #tTalk.on{display:flex}
   <div class="tb" id="tGren">Gren</div>
   <div class="tb" id="tMelee">Melee</div>
   <div class="tb" id="tSuper">Super</div>
+  <div class="tb" id="tClass">Class</div>
   <div class="tb" id="tReload">Reload</div>
   <div class="tb" id="tAim">Aim</div>
   <div class="tb" id="tSlide">Slide</div>
@@ -492,16 +733,16 @@ body.social #tTalk.on{display:flex}
     <div class="keys" id="keysDesk">
       <b>WASD · Mouse</b><span>Move and aim (right-click to aim down sights)</span>
       <b>Click</b><span>Fire. R reloads</span>
-      <b>Space</b><span>Jump, press again in the air to lift</span>
-      <b>Q · E</b><span>Solar grenade · Melee strike</span>
-      <b>F</b><span>Storm Burst super when the bar is full</span>
+      <b>Space</b><span>Jump, then again in the air for your class jump</span>
+      <b>Q · E · V</b><span>Grenade · melee · class ability</span>
+      <b>F</b><span>Super when the bar is full</span>
       <b>Shift · C</b><span>Sprint, then C to slide. Esc pauses</span>
       <b>1 2 3 · I</b><span>Switch weapons (or mouse wheel) · open your Gear</span>
       <b>M · E</b><span>Open the Director (galaxy map) · talk to people in Emberhold</span>
       <b>Jets</b><span>On Talos Rift press E at a jet. Point with the mouse and the jet flies there (arrows fly by hand), W S throttle (S at zero is airbrake), Shift afterburner, click guns, right-click missiles, F flares</span>
     </div>
     <div class="keys" id="keysPad">
-      <b>Controller</b><span>RT fire, LT aim, A jump, X reload (talk in Emberhold), B slide, Y swap, LB grenade, RB melee, LB + RB super, L3 sprint, View gear, D-pad up Director, Menu pauses</span>
+      <b>Controller</b><span>RT fire, LT aim, A jump, X reload (talk in Emberhold), B slide, Y swap, LB grenade, RB melee, LB + RB super, D-pad down class ability, L3 sprint, View gear, D-pad up Director, Menu pauses</span>
     </div>
     <div class="keys" id="keysTouch" hidden>
       <b>Left thumb</b><span>Move</span>
@@ -512,7 +753,7 @@ body.social #tTalk.on{display:flex}
       <b>Sprint</b><span>Push the left stick all the way forward</span>
       <b>Map · Talk</b><span>Map opens the Director. Walk up to people in Emberhold and tap Talk</span>
     </div>
-    <div class="btnrow"><button class="btn" id="play">Deploy</button><button class="btn ghost" id="ctrlOpen">Controller setup</button><button class="btn ghost padToggle" type="button" aria-pressed="true">Controller: On</button></div>
+    <div class="btnrow"><button class="btn" id="play">Play</button><button class="btn ghost" id="ctrlOpen">Controller setup</button><button class="btn ghost padToggle" type="button" aria-pressed="true">Controller: On</button></div>
     <div class="lbl" id="padStatus" hidden>Controller connected · press A to deploy</div>
     <details class="credits"><summary>Credits</summary>
       <p>Gun models used under CC BY 4.0, recoloured for Ember Drift:
@@ -530,7 +771,7 @@ body.social #tTalk.on{display:flex}
   <div class="panel">
     <h2 class="title" style="font-size:64px">Paused</h2>
     <label class="sens" id="sensWrap"><span class="lbl">Look sensitivity · <b id="sensVal">1.0</b>×</span><input type="range" id="sens" min="0.4" max="2.2" step="0.1" value="1"></label>
-    <div class="btnrow"><button class="btn" id="resume">Resume</button><button class="btn ghost" id="dirOpen">Director</button><button class="btn ghost" id="goHome">Return to Emberhold</button><button class="btn ghost" id="ctrlOpen2">Controller setup</button><button class="btn ghost padToggle" type="button" aria-pressed="true">Controller: On</button><button class="btn ghost" id="flightMode" type="button">Jets: mouse aim</button><button class="btn ghost" id="invFlight" type="button">Flight: push to dive</button></div>
+    <div class="btnrow"><button class="btn" id="resume">Resume</button><button class="btn ghost" id="dirOpen">Director</button><button class="btn ghost" id="orbitBtn" type="button">Orbit</button><button class="btn ghost" id="goHome">Return to Emberhold</button><button class="btn ghost" id="ctrlOpen2">Controller setup</button><button class="btn ghost padToggle" type="button" aria-pressed="true">Controller: On</button><button class="btn ghost" id="flightMode" type="button">Jets: mouse aim</button><button class="btn ghost" id="invFlight" type="button">Flight: push to dive</button></div>
   </div>
 </div>
 
@@ -598,14 +839,60 @@ body.social #tTalk.on{display:flex}
 <div class="overlay" id="dirOv" hidden>
   <div class="dirtop">
     <div class="dirtabs" role="tablist">
-      <button class="dtab" data-tab="map" role="tab" type="button">Director</button>
+      <button class="dtab" data-tab="store" role="tab" type="button">Store</button>
+      <button class="dtab" data-tab="pass" role="tab" type="button">Rewards Pass</button>
       <button class="dtab" data-tab="quests" role="tab" type="button">Quests</button>
-      <button class="dtab" data-tab="store" role="tab" type="button">Expansions</button>
+      <button class="dtab" data-tab="map" role="tab" type="button">Map</button>
+      <button class="dtab" data-tab="dest" role="tab" type="button">Destinations</button>
     </div>
     <div class="dirme"><span>Power<b id="dirPower">1000</b></span><span class="cin">Cinders<b id="dirCinders">0</b></span><button class="btn ghost" id="dirClose" type="button">Close</button></div>
   </div>
   <div id="dirMap"></div>
   <div id="dirPane" hidden></div>
+</div>
+
+<div id="selectOv" hidden>
+  <div class="selHead">
+    <div class="lbl">Ember Drift · Choose a character</div>
+    <b class="selName">Driftwalker</b>
+    <div class="selClan">Fireteam // Emberhold</div>
+  </div>
+  <div id="selList"></div>
+  <div class="selCard" id="selCard">
+    <div class="selCardTop">Select character</div>
+    <p id="selBlurb"></p>
+    <div class="selCardBtns"><button class="btn" id="selGo" type="button">Log in</button><button class="btn ghost small" id="selReset" type="button">Reset</button></div>
+  </div>
+  <div class="hintbar"><button class="hint" id="selBack" type="button"><kbd>Esc</kbd>Title screen</button></div>
+</div>
+
+<div id="orbitOv" hidden>
+  <div class="orbitCard" id="orbitCard"></div>
+  <div class="orbitBtns">
+    <button class="obtn" id="orbJourney" type="button"><span>View Journey</span></button>
+    <button class="obtn" id="orbDirector" type="button"><span>Open Director</span></button>
+  </div>
+  <div class="hintbar">
+    <button class="hint" id="orbChars" type="button"><kbd>Esc</kbd>Characters</button>
+    <button class="hint" id="orbGear" type="button"><kbd>I</kbd>Character</button>
+    <button class="hint" id="orbLand" type="button"><kbd>L</kbd>Land</button>
+    <button class="hint" id="orbOptions" type="button"><kbd>O</kbd>Options</button>
+  </div>
+</div>
+
+<div id="subOv" hidden>
+  <div class="subBg" id="subBg"></div>
+  <div class="subTop">
+    <div class="subGlyph" id="subGlyph"></div>
+    <div><h2 id="subTitle">Cinder</h2><div class="lbl" id="subKind">Outrider subclass</div></div>
+    <div class="subSwitch" id="subSwitch"></div>
+    <button class="btn ghost small" id="subClose" type="button">Back</button>
+  </div>
+  <div class="subBody">
+    <div class="subGroups" id="subGroups"></div>
+    <div class="subInfo" id="subInfo"></div>
+  </div>
+  <div class="subStats" id="subStats"></div>
 </div>
 
 <div id="loadOv"><div class="streaks"></div><div class="lt"><div class="lbl" id="loadSub">Travelling</div><b id="loadName">Emberhold</b><div class="bar"></div></div></div>
@@ -1370,13 +1657,13 @@ const LOCATIONS = {
     name: 'The Hollow Crown', region: 'Expansion · Hollow throne world', combat: true, radius: 56, outposts: 3, spawn: [0, 0, 10], yaw: 0, build: buildCrown, seed: 43, threat: 1.6, power: 1040, pack: 'hollowcrown',
     desc: 'Where the Hollow come from. A ring of black spires turning over a red sky.',
     pal: { top: 0x0a0204, mid: 0x4a0a14, hor: 0xff4a3a, swA: 0x8a1a2a, swB: 0x3a0a3a, fog: 0x3a0a12, fogD: 0.01, hemiS: 0xff9aa0, hemiG: 0x2a0a10, sun: 0xff7a5a, sunI: 1.0, sunDir: [0, 0.3, -1] },
-    sky: { planet: false, moon: false }, map: { x: 85, y: 20, s: 76, c: ['#ffb0a0', '#c42a2a', '#1a0408'] }
+    sky: { planet: false, moon: false }, map: { x: 82, y: 34, s: 76, c: ['#ffb0a0', '#c42a2a', '#1a0408'] }
   },
   rift: {
     name: 'Talos Rift', region: 'Talos · Battle zone', combat: true, battle: true, radius: 380, outposts: 3, zone: { gap: 180, gapVar: 80, r0: 100, rVar: 40, w: 40, bend: 3 }, spawn: [0, 0, 356], yaw: 0, build: buildRift, seed: 57, threat: 1, power: 1000,
     desc: 'A huge open war world. Fighter jets duel over a mainland of hills, canyons and ruined flank outposts while two armies fight for the field. Deploy at the front or take off from Hangar Island.',
     pal: { top: 0x0a1428, mid: 0x3a3a5a, hor: 0xe8a070, swA: 0x5a4a7a, swB: 0x3a6a9a, fog: 0x5a4a50, fogD: 0.0009, hemiS: 0xb8c4ff, hemiG: 0x5a4434, hemiI: 0.85, sun: 0xffd2a0, sunI: 1.3, sunDir: [0.5, 0.42, -0.6] },
-    sky: { planet: true, moon: true }, map: { x: 66, y: 78, s: 66, c: ['#ffe0b8', '#a87050', '#2a1a14'] }
+    sky: { planet: true, moon: true }, map: { x: 47, y: 85, s: 66, c: ['#ffe0b8', '#a87050', '#2a1a14'] }
   }
 };
 const STONE_BY_LOC = { tower: [0xf0e8e4, 0xb8c0cc], steppe: [0xe8d8cc, 0xa8b0bc], veyra: [0xe0eaf8, 0xa8b8d0], kharun: [0xc8d4b8, 0x98a490], crown: [0x6a5e6a, 0x504a58], rift: [0xd8ccc0, 0x8a909c] };
@@ -1885,7 +2172,7 @@ const sfx = {
 
 // ---------- player ----------
 const player = { pos: new THREE.Vector3(0, 0, 8), vel: new THREE.Vector3(), yaw: 0, pitch: 0, onGround: true, lifted: false,
-  hp: 100, lastHurt: -99, reloading: 0, reloadMax: 1, fireCd: 0, gren: 0, grenMax: 1, melee: 0, meleeMax: 1, superE: 0, kills: 0,
+  hp: 100, lastHurt: -99, reloading: 0, reloadMax: 1, fireCd: 0, gren: 0, grenMax: 1, melee: 0, meleeMax: 1, superE: 0, kills: 0, clsCd: 0, clsMax: 1, airJumps: 0, glide: false,
   wslot: 0, swapT: 0, burstLeft: 0, burstT: 0, ads: 0, slideT: 0, crouch: 0 };
 const keys = {};
 let firing = false, adsHeld = false, mouseFiring = false, mouseAds = false, touchAds = false;
@@ -2459,9 +2746,6 @@ function buildPlayerModel(accent){
   const g = new THREE.Group(), B = {};
   const orbMat = new THREE.MeshStandardMaterial({ color: 0x111111, emissive: accent, emissiveIntensity: 1.6 });
   const orbs = [];
-  // soft key light so she reads against the dusk sky; hidden with the model during play
-  const key = new THREE.PointLight(0xffeef6, 1.0, 7); key.position.set(1.4, 2.4, 2.6); g.add(key);
-  const glow = new THREE.PointLight(accent, 0.6, 2.5); glow.position.set(0, 1.1, 0.35); g.add(glow);
   loadGlb('ritualist', gltf => {
     gltf.scene.traverse(o => {
       if (o.isBone) { B[o.name] = o; o.userData.rest = o.quaternion.clone(); }
@@ -2474,6 +2758,16 @@ function buildPlayerModel(accent){
     });
     g.add(gltf.scene);
     gltf.scene.traverse(o => { if (o.isMesh && !fp.hand.L) loadFpArms(o.material); });
+    // each hand's rest frame in her own space, so it can be turned to hold a gun: the fingers carry on along the
+    // forearm and the palms face up in the rest pose
+    g.updateMatrixWorld(true);
+    const gq = g.getWorldQuaternion(new THREE.Quaternion()).invert();
+    for (const side of ['L', 'R']) {
+      const h = B['hand' + side], f = B['forearm' + side]; if (!h || !f) continue;
+      const hp = g.worldToLocal(h.getWorldPosition(new THREE.Vector3())), fp0 = g.worldToLocal(f.getWorldPosition(new THREE.Vector3()));
+      h.userData.restQ = gq.clone().multiply(h.getWorldQuaternion(new THREE.Quaternion()));
+      h.userData.f0 = hp.sub(fp0).normalize(); h.userData.p0 = new THREE.Vector3(0, 1, 0);
+    }
     // a small orb of the subclass element floats above each open palm
     for (const side of ['handL', 'handR']) {
       const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.028, 1), orbMat);
@@ -2486,9 +2780,43 @@ function buildPlayerModel(accent){
     const b = B[name]; if (!b) return;
     b.quaternion.copy(b.userData.rest).multiply(q.setFromEuler(e.set(x, y, z)));
   };
+  // holding a gun: it sits at a fixed low-ready pose across the body (in her own space, facing +z) and a two-bone
+  // IK swings each upper arm and forearm so the hands land on the gun's grips
+  const holder = new THREE.Group(); holder.visible = false; g.add(holder);
+  const hold = { pos: new THREE.Vector3(-0.12, 1.08, 0.3), dir: new THREE.Vector3(0.5, -0.25, 1), up: new THREE.Vector3(0, 1, 0), s: 0.8,
+    poleR: new THREE.Vector3(-0.5, -1, -0.4), poleL: new THREE.Vector3(0.5, -1, -0.3) };
+  const _S = new THREE.Vector3(), _E = new THREE.Vector3(), _W = new THREE.Vector3(), _T = new THREE.Vector3(), _P = new THREE.Vector3(), _X = new THREE.Vector3(), _Y = new THREE.Vector3();
+  const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _hm = new THREE.Matrix4(), _zero = new THREE.Vector3();
+  const swing = (bone, from, to) => {
+    // turn the bone in world space so the direction `from` lies along `to`
+    _qa.setFromUnitVectors(from.normalize(), to.normalize());
+    bone.getWorldQuaternion(_qb).premultiply(_qa);
+    bone.parent.getWorldQuaternion(_qa).invert();
+    bone.quaternion.copy(_qa.multiply(_qb)); bone.updateMatrixWorld(true);
+  };
+  const reach = (side, target, pole) => {
+    const up = B['upperarm' + side], fo = B['forearm' + side], ha = B['hand' + side]; if (!up || !fo || !ha) return;
+    up.getWorldPosition(_S); fo.getWorldPosition(_E); ha.getWorldPosition(_W);
+    const a = _S.distanceTo(_E), b = _E.distanceTo(_W), d = clamp(_S.distanceTo(target), Math.abs(a - b) + 0.001, (a + b) * 0.995);
+    const dir = _X.copy(target).sub(_S).normalize(), x = (a * a - b * b + d * d) / (2 * d), h = Math.sqrt(Math.max(0, a * a - x * x));
+    _P.copy(pole).transformDirection(g.matrixWorld); _P.addScaledVector(dir, -_P.dot(dir)).normalize();
+    _Y.copy(_S).addScaledVector(dir, x).addScaledVector(_P, h);
+    swing(up, _E.sub(_S), _Y.sub(_S));
+    fo.getWorldPosition(_E); ha.getWorldPosition(_W);
+    swing(fo, _W.sub(_E), _T.copy(target).sub(_E));
+    // then turn the hand from its rest frame to the gun's grip frame (the same finger and palm directions the
+    // first-person hands use)
+    if (!ha.userData.restQ) return;
+    _X.copy(FP_GRIP[side].fingers).applyQuaternion(holder.quaternion).normalize(); _Y.copy(FP_GRIP[side].palm).applyQuaternion(holder.quaternion);
+    frameMat(_M1, _X, _Y); frameMat(_M0, ha.userData.f0, ha.userData.p0);
+    _qa.setFromRotationMatrix(_M1.multiply(_M0.transpose())).multiply(ha.userData.restQ);
+    g.getWorldQuaternion(_qb); _qb.multiply(_qa);
+    ha.parent.getWorldQuaternion(_qa).invert();
+    ha.quaternion.copy(_qa.multiply(_qb));
+  };
   return {
-    g, trim: orbMat,
-    setAccent(hex){ orbMat.emissive.setHex(hex); glow.color.setHex(hex); },
+    g, trim: orbMat, armed: false, holder, hold, bones: B,
+    setAccent(hex){ orbMat.emissive.setHex(hex); },
     anim(t, spd){
       if (!B.hips) return;
       const a = Math.min(1, spd / 6), f = t * 9, br = Math.sin(t * 1.4);
@@ -2506,10 +2834,20 @@ function buildPlayerModel(accent){
       pose('forearmL', 0, 0, -lift * 0.5); pose('forearmR', 0, 0, lift * 0.5);
       pose('skirt', 0.03 + a * 0.12 + Math.sin(t * 1.1) * 0.02, 0, Math.sin(t * 0.8) * 0.015 + Math.sin(f) * 0.03 * a);
       g.updateMatrixWorld(true);
+      holder.visible = this.armed;
+      pose('handR', 0, 0, 0); pose('handL', 0, 0, 0);
+      if (this.armed) {
+        // the gun breathes with her, then each hand reaches its grip (the right on the pistol grip, the left on the guard)
+        holder.position.copy(hold.pos); holder.position.y += br * 0.006;
+        holder.quaternion.setFromRotationMatrix(_hm.lookAt(_zero, _T.copy(hold.dir).normalize(), hold.up)); holder.scale.setScalar(hold.s);
+        holder.updateMatrixWorld(true);
+        reach('R', holder.localToWorld(tmp.copy(fpAnchor.R.position)), hold.poleR);
+        reach('L', holder.localToWorld(tmp.copy(fpAnchor.L.position)), hold.poleL);
+      }
       orbs.forEach((o, k) => {
         o.hand.getWorldPosition(tmp); g.worldToLocal(tmp);
         o.orb.position.set(tmp.x + (k ? -0.04 : 0.04), tmp.y + 0.1 + Math.sin(t * 2.5 + k) * 0.02, tmp.z + 0.02);
-        o.orb.visible = a < 0.3;
+        o.orb.visible = a < 0.3 && !this.armed;
         o.orb.rotation.y = t * 2;
       });
     }
@@ -2665,33 +3003,208 @@ const ANAME = { helmet: ['Helm','Visor','Hood','Crown'], arms: ['Gauntlets','Gri
 const ASET = ['Steppe Walker','Ember Vigil','Ruin Diver','Lantern Guard','Driftborn','Hollowbane','Saltglass','Dusk Warden'];
 const pick = a => a[Math.floor(rand() * a.length)];
 
+// ---------- glyphs: original line-art icons for classes, elements, abilities, weapons, armor and stats ----------
+const svgIcon = (inner, vb) => '<svg viewBox="' + (vb || '0 0 100 100') + '" aria-hidden="true" focusable="false">' + inner + '</svg>';
+const GLYPH = {
+  seer: '<path d="M50 4 L58 42 L96 50 L58 58 L50 96 L42 58 L4 50 L42 42Z" fill="currentColor" opacity=".3"/><path d="M16 50 Q50 20 84 50 Q50 80 16 50Z" fill="none" stroke="currentColor" stroke-width="6"/><circle cx="50" cy="50" r="11" fill="currentColor"/>',
+  outrider: '<path d="M20 88 L50 8 L80 88 L50 70Z" fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="round"/><path d="M50 30 V64 M32 52 L50 42 L68 52" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>',
+  bulwark: '<path d="M50 6 L88 20 L84 58 Q78 82 50 96 Q22 82 16 58 L12 20Z" fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="round"/><path d="M50 24 Q66 44 57 60 Q67 55 65 44 Q76 63 50 80 Q28 67 37 48 Q40 57 46 59 Q37 42 50 24Z" fill="currentColor"/>',
+  solar: '<path d="M50 10 Q74 40 68 62 Q63 84 50 88 Q37 84 32 62 Q26 40 50 10Z" fill="currentColor"/><path d="M50 48 Q59 61 55 72 Q50 77 45 72 Q41 61 50 48Z" fill="#000" opacity=".35"/>',
+  arc: '<path d="M60 4 L24 54 L46 54 L36 96 L76 40 L54 40 L66 4Z" fill="currentColor"/>',
+  void: '<circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="10"/><circle cx="50" cy="50" r="10" fill="currentColor"/>',
+  kinetic: '<path d="M50 10 L88 50 L50 90 L12 50Z" fill="none" stroke="currentColor" stroke-width="8"/>'
+};
+// ability icons: a base shape per kind, with a small variant mark so each option reads differently
+const AICON = {
+  super: '<path d="M50 4 L61 37 L96 39 L68 60 L78 95 L50 75 L22 95 L32 60 L4 39 L39 37Z" fill="currentColor"/>',
+  grenade: '<circle cx="50" cy="60" r="27" fill="none" stroke="currentColor" stroke-width="8"/><path d="M50 33 V16 L68 10" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round"/><circle cx="50" cy="60" r="9" fill="currentColor"/>',
+  melee: '<path d="M18 82 L66 30 L84 14 L80 36 L30 88Z" fill="currentColor"/><path d="M26 66 L40 80" stroke="currentColor" stroke-width="8"/>',
+  mend: '<circle cx="50" cy="50" r="34" fill="none" stroke="currentColor" stroke-width="7"/><path d="M50 30 V70 M30 50 H70" stroke="currentColor" stroke-width="9"/>',
+  roll: '<path d="M22 62 A30 30 0 1 1 72 74" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round"/><path d="M60 82 L76 72 L64 58" fill="none" stroke="currentColor" stroke-width="8"/>',
+  wall: '<path d="M14 30 H86 V74 H14Z" fill="none" stroke="currentColor" stroke-width="8"/><path d="M14 52 H86 M38 30 V52 M62 52 V74" stroke="currentColor" stroke-width="6"/>',
+  glide: '<path d="M10 46 Q50 18 90 46 L50 38Z" fill="currentColor"/><path d="M50 50 V86 M38 74 L50 86 L62 74" fill="none" stroke="currentColor" stroke-width="7"/>',
+  triple: '<path d="M22 92 L50 66 L78 92 M22 66 L50 40 L78 66 M22 40 L50 14 L78 40" fill="none" stroke="currentColor" stroke-width="8"/>',
+  lift: '<path d="M50 8 L80 44 H62 V90 H38 V44 H20Z" fill="currentColor"/>',
+  aspect: '<path d="M50 4 L94 50 L50 96 L6 50Z" fill="none" stroke="currentColor" stroke-width="6"/><path d="M50 26 L74 50 L50 74 L26 50Z" fill="currentColor"/>',
+  shard: '<path d="M50 6 L80 30 L70 90 L30 90 L20 30Z" fill="none" stroke="currentColor" stroke-width="7"/><path d="M50 6 L50 90 M20 30 L80 30" stroke="currentColor" stroke-width="4" opacity=".7"/>'
+};
+function abilityIcon(kind, variant){
+  const marks = variant ? Array.from({ length: Math.min(4, variant) }, (_, i) => '<rect x="' + (6 + i * 9) + '" y="6" width="6" height="6" fill="currentColor" opacity=".8"/>').join('') : '';
+  return svgIcon((AICON[kind] || AICON.aspect) + marks);
+}
+// side-on weapon silhouettes, one per weapon type
+const WICON = {
+  auto: 'M4 32 L18 27 L64 27 L68 22 L96 22 L96 27 L116 27 L116 32 L86 32 L82 40 L74 40 L72 34 L54 34 L47 52 L37 52 L41 34 L22 37 L8 44 L3 42Z',
+  pulse: 'M4 31 L16 26 L58 26 L62 20 L88 20 L90 25 L118 25 L118 30 L86 30 L84 37 L76 37 L74 33 L52 33 L46 50 L36 50 L40 33 L20 36 L6 43Z',
+  hand: 'M28 22 L100 22 L100 30 L66 30 L62 34 L58 34 L52 54 L36 54 L40 36 L30 34Z M58 18 L74 18 L74 22 L58 22Z',
+  scout: 'M2 33 L16 28 L56 28 L58 22 L80 22 L80 28 L118 28 L118 32 L80 32 L76 40 L68 40 L66 35 L50 35 L44 52 L34 52 L38 35 L18 38 L4 44Z M54 14 L84 14 L84 20 L54 20Z',
+  smg: 'M14 30 L24 24 L80 24 L80 30 L100 30 L100 34 L78 34 L72 40 L64 40 L62 34 L56 34 L54 56 L46 56 L46 34 L40 34 L36 48 L28 48 L30 34 L18 36Z',
+  shotgun: 'M2 34 L14 26 L50 26 L52 22 L112 22 L112 31 L76 31 L76 36 L56 36 L50 52 L40 52 L44 36 L20 38 L6 46Z',
+  sniper: 'M0 34 L12 29 L46 29 L48 24 L70 24 L70 29 L119 29 L119 32 L70 32 L66 40 L58 40 L56 36 L42 36 L36 52 L26 52 L30 36 L14 39 L2 45Z M44 13 L80 13 L80 21 L44 21Z',
+  rocket: 'M6 22 L110 22 L114 26 L114 38 L110 42 L6 42 L2 38 L2 26Z M44 42 L50 56 L60 56 L58 42Z M26 14 L42 14 L42 22 L26 22Z'
+};
+const weaponIcon = arch => svgIcon('<path d="' + (WICON[arch] || WICON.auto) + '" fill="currentColor"/>', '0 0 120 60');
+const ARMOR_ICON = {
+  helmet: '<path d="M18 62 Q16 18 50 14 Q84 18 82 62 L72 84 H28Z" fill="currentColor"/><path d="M28 48 H72 L66 60 H34Z" fill="#000" opacity=".55"/>',
+  arms: '<path d="M30 10 H62 L66 48 L80 60 L76 88 H40 L28 62Z" fill="currentColor"/><path d="M34 40 H64" stroke="#000" stroke-width="5" opacity=".45"/>',
+  chest: '<path d="M14 18 L36 10 Q50 20 64 10 L86 18 L80 52 L66 90 H34 L20 52Z" fill="currentColor"/><path d="M50 26 V84" stroke="#000" stroke-width="5" opacity=".45"/>',
+  legs: '<path d="M24 8 H76 L74 40 L66 92 H54 L50 46 L46 92 H34 L26 40Z" fill="currentColor"/>',
+  classItem: '<path d="M26 8 H74 V86 L50 70 L26 86Z" fill="currentColor"/><path d="M38 24 H62 M38 36 H62" stroke="#000" stroke-width="5" opacity=".45"/>'
+};
+const armorIcon = slot => svgIcon(ARMOR_ICON[slot] || ARMOR_ICON.chest);
+const STAT_ICON = {
+  agility: '<path d="M14 82 L42 50 L14 18 M50 82 L78 50 L50 18" fill="none" stroke="currentColor" stroke-width="10"/>',
+  fortitude: '<path d="M50 8 L86 22 L82 58 Q74 82 50 94 Q26 82 18 58 L14 22Z" fill="currentColor"/>',
+  recovery: '<path d="M38 10 H62 V38 H90 V62 H62 V90 H38 V62 H10 V38 H38Z" fill="currentColor"/>',
+  ordnance: '<circle cx="50" cy="58" r="30" fill="currentColor"/><path d="M50 28 V12 L68 6" fill="none" stroke="currentColor" stroke-width="8"/>',
+  might: '<path d="M50 6 L90 28 V72 L50 94 L10 72 V28Z" fill="currentColor"/>',
+  focus: '<path d="M50 4 L60 40 L96 50 L60 60 L50 96 L40 60 L4 50 L40 40Z" fill="currentColor"/>'
+};
+const statIcon = id => svgIcon(STAT_ICON[id] || STAT_ICON.might);
+// draw a glyph onto a canvas texture (for the emblems in the 3D backdrops)
+function glyphTexture(id, css, size, done){
+  const c = document.createElement('canvas'); c.width = c.height = size || 512;
+  const t = new THREE.CanvasTexture(c);
+  const img = new Image();
+  img.onload = () => { const x = c.getContext('2d'); x.clearRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height); t.needsUpdate = true; if (done) done(); };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" style="color:' + css + '">' + GLYPH[id].replace(/currentColor/g, css) + '</svg>');
+  return t;
+}
+
 // ======================================================================
-// SUBCLASSES
-// Each subclass bundles a super, a grenade and a melee. To add one, copy
-// an entry: give it an element, then write cast/throw/hit functions.
-// Cooldowns are in seconds before armor stats are applied.
+// CLASSES AND SUBCLASSES
+// Three classes, each with its own class ability and jump. Subclasses are
+// elements: each offers a choice of supers, grenades and melees, two aspect
+// slots and four shard slots. The loadout per subclass is saved in
+// inv.loadout. To add an option, add an entry to the matching table; the
+// subclass screen and combat pick it up.
+//   aspects and shards can carry: stat {agility: 10, ...}, onKill(ctx),
+//   onClass(), onMeleeHit(e), flags (read with hasMod('id'))
 // ======================================================================
+const CLASSES = {
+  seer: { n: 'Seer', lineage: 'Veilkin', css: '#9fd8ff', c: 0x9fd8ff,
+    blurb: 'Scholars of the Ember who bend its light into wards and storms.',
+    ability: { id: 'mend', n: 'Mending Circle', d: 'Plant a ring of light for 6 s. Inside it you heal fast and your super charges.', cd: 22, use: seerCircle },
+    jump: { id: 'glide', n: 'Drift Glide', d: 'Jump again in the air to glide down slowly.' } },
+  outrider: { n: 'Outrider', lineage: 'Forged', css: '#ffb36a', c: 0xffb36a,
+    blurb: 'Scouts and duelists who live on speed and nerve.',
+    ability: { id: 'roll', n: 'Slip Roll', d: 'Roll a few metres the way you are moving and reload your weapon.', cd: 9, use: slipRoll },
+    jump: { id: 'triple', n: 'Triple Leap', d: 'Jump twice more in the air.' } },
+  bulwark: { n: 'Bulwark', lineage: 'Emberborn', css: '#ff8a6a', c: 0xff8a6a,
+    blurb: 'Shield-bearers who hold the line so the rest can push.',
+    ability: { id: 'wall', n: 'Bastion Wall', d: 'Raise a barrier in front of you that stops enemy fire for 8 s.', cd: 26, use: bastionWall },
+    jump: { id: 'lift', n: 'Thrust Lift', d: 'Jump again in the air for a long powered lift.' } }
+};
+const CLASS_IDS = ['seer', 'outrider', 'bulwark'];
 const SUBCLASSES = {
-  tempest: {
-    n: 'Tempest', element: 'arc', flavor: 'Arc. Speed, chain lightning and storms.',
-    super:   { n: 'Storm Burst',   d: 'Release a ring of lightning that strikes every enemy within 25 m.', cast: superStormBurst },
-    grenade: { n: 'Pulse Grenade', d: 'Detonates three times, shocking anything nearby.', cd: 9,
-               throw(){ lob(0x7fd8ff, p => { blast(p, 6.5, 90 * abilityMult(), 0x7fd8ff, { kind: 'grenade' }, true);
-                 for (let i = 1; i <= 2; i++) setTimeout(() => { if (state === 'play') blast(p, 5, 50 * abilityMult(), 0x7fd8ff, { kind: 'grenade' }, false); }, i * 550); }); } },
-    melee:   { n: 'Thunderclap',   d: 'A charged strike that arcs to two more enemies.', cd: 1.8, dmg: 100, hit(e, dmg){ chainLightning(e, dmg * 0.5, 2, { kind: 'melee' }); } }
-  },
   cinder: {
     n: 'Cinder', element: 'solar', flavor: 'Solar. Fire, burns and big explosions.',
-    super:   { n: 'Sunfall',        d: 'Hurl three blazing orbs that explode on impact.', cast: superSunfall },
-    grenade: { n: 'Solar Grenade',  d: 'A heavy blast that sets survivors on fire.', cd: 8,
-               throw(){ lob(0xff8a2a, p => blast(p, 7.5, 150 * abilityMult(), 0xff8a3a, { kind: 'grenade', burn: true }, true)); } },
-    melee:   { n: 'Ember Strike',   d: 'A burning strike that leaves the target on fire.', cd: 1.6, dmg: 110, hit(e){ burnEnemy(e, 3.5); } }
+    supers: {
+      sunfall:  { n: 'Sunfall',  d: 'Hurl three blazing orbs that explode on impact and set survivors on fire.', cast: superSunfall },
+      sunspear: { n: 'Sunspear', d: 'Throw one burning spear. It bursts in a huge blast that ignites everything caught in it.', cast: superSunspear }
+    },
+    grenades: {
+      solar:  { n: 'Solar Grenade', d: 'A heavy blast that sets survivors on fire.', cd: 8,
+                throw(){ lob(0xff8a2a, p => blast(p, 7.5, 150 * abilityMult(), 0xff8a3a, { kind: 'grenade', burn: true }, true)); } },
+      sear:   { n: 'Sear Mine', d: 'Lands and waits up to 10 s. Bursts into flame when an enemy walks close.', cd: 9,
+                throw(){ lob(0xffb050, p => armMine(p, 0xff8a3a, 4.5, 10, q => blast(q, 6.5, 170 * abilityMult(), 0xff8a3a, { kind: 'grenade', burn: true }, false))); } },
+      flare:  { n: 'Flare Burst', d: 'A wide, weaker flash that sets every enemy within 10 m burning for 5 s.', cd: 10,
+                throw(){ lob(0xffd070, p => { blast(p, 10, 60 * abilityMult(), 0xffc060, { kind: 'grenade' }, false); for (const e of enemies) if (!e.dead && e.pos.distanceTo(p) < 10) burnEnemy(e, 5 * burnMult()); }); } }
+    },
+    melees: {
+      ember: { n: 'Ember Strike', d: 'A burning strike that leaves the target on fire.', cd: 1.6, dmg: 110, hit(e){ burnEnemy(e, 3.5 * burnMult()); } },
+      knife: { n: 'Flare Knife', d: 'Throw a burning knife up to 30 m. It ignites what it hits.', cd: 5, dmg: 130, ranged: 30, hit(e){ burnEnemy(e, 4 * burnMult()); } }
+    },
+    aspects: {
+      kindled:  { n: 'Kindled Draw', d: 'Precision kills with a weapon fully recharge your melee.', onKill(c){ if (c.precision && c.w) player.melee = 0; } },
+      hotfoot:  { n: 'Hotfoot', d: 'Your class ability throws out a ring of flame that ignites enemies within 6 m.', onClass(){ blast(player.pos.clone().setY(0.4), 6, 60 * abilityMult(), 0xff8a3a, { kind: 'melee', burn: true }, false); } },
+      emberHeart: { n: 'Ember Heart', d: 'Burning enemies explode when they die, hurting the ones around them.', onKill(c){ if (c.e.burn > 0 && c.kind !== 'chain') blast(c.e.pos.clone().setY(0.6), 4.5, 70 * abilityMult(), 0xff9a4a, { kind: 'chain' }, false); } }
+    },
+    shards: {
+      haste:  { n: 'Shard of Haste', d: '+10 Agility.', stat: { agility: 10 } },
+      grit:   { n: 'Shard of Grit', d: '+10 Fortitude.', stat: { fortitude: 10 } },
+      wrath:  { n: 'Shard of Wrath', d: '+10 Might.', stat: { might: 10 } },
+      mend:   { n: 'Shard of Mending', d: 'Every kill restores 12 health.', onKill(){ player.hp = Math.min(100, player.hp + 12); } },
+      fuel:   { n: 'Shard of Fuel', d: 'Grenade kills give back half your grenade energy.', onKill(c){ if (c.kind === 'grenade') player.gren *= 0.5; } },
+      pyre:   { n: 'Shard of the Pyre', d: 'Burns you cause last 50% longer.', flag: 'longBurn' }
+    }
+  },
+  tempest: {
+    n: 'Tempest', element: 'arc', flavor: 'Arc. Speed, chain lightning and storms.',
+    supers: {
+      storm:       { n: 'Storm Burst', d: 'Release a ring of lightning that strikes every enemy within 25 m.', cast: superStormBurst },
+      thunderhead: { n: 'Thunderhead', d: 'Call six bolts from the sky onto the nearest enemies within 45 m.', cast: superThunderhead }
+    },
+    grenades: {
+      pulse: { n: 'Pulse Grenade', d: 'Detonates three times, shocking anything nearby.', cd: 9,
+               throw(){ lob(0x7fd8ff, p => { blast(p, 6.5, 90 * abilityMult(), 0x7fd8ff, { kind: 'grenade' }, true);
+                 for (let i = 1; i <= 2; i++) setTimeout(() => { if (state === 'play') blast(p, 5, 50 * abilityMult(), 0x7fd8ff, { kind: 'grenade' }, false); }, i * 550); }); } },
+      snare: { n: 'Arc Snare', d: 'Leaves a crackling field for 6 s that shocks enemies inside it twice a second.', cd: 10,
+               throw(){ lob(0x9fe8ff, p => armField(p, 0x7fd8ff, 5, 6, e => { damageEnemy(e, 22 * abilityMult(), false, e.head.getWorldPosition(new THREE.Vector3()), { kind: 'grenade' }); })); } }
+    },
+    melees: {
+      clap:  { n: 'Thunderclap', d: 'A charged strike that arcs to two more enemies.', cd: 1.8, dmg: 100, hit(e, dmg){ chainLightning(e, dmg * 0.5, 2, { kind: 'melee' }); } },
+      palm:  { n: 'Static Palm', d: 'A shove that throws the target back and shocks three enemies around it.', cd: 2.4, dmg: 85, push: 7, hit(e, dmg){ chainLightning(e, dmg * 0.4, 3, { kind: 'melee' }); } }
+    },
+    aspects: {
+      overcharge: { n: 'Overcharge', d: 'Melee kills fully recharge your grenade.', onKill(c){ if (c.kind === 'melee') player.gren = 0; } },
+      stormstep:  { n: 'Storm Step', d: 'Sprint 15% faster.', flag: 'stormStep' },
+      chain:      { n: 'Chain Reaction', d: 'Ability kills arc lightning to two nearby enemies.', onKill(c){ if (c.kind === 'grenade' || c.kind === 'melee' || c.kind === 'super') chainLightning(c.e, 60 * abilityMult(), 2, { kind: 'chain' }); } }
+    },
+    shards: {
+      speed:  { n: 'Shard of Speed', d: '+10 Agility.', stat: { agility: 10 } },
+      focus:  { n: 'Shard of Focus', d: '+10 Focus.', stat: { focus: 10 } },
+      breath: { n: 'Shard of Breath', d: '+10 Recovery.', stat: { recovery: 10 } },
+      volts:  { n: 'Shard of Volts', d: '+10 Ordnance.', stat: { ordnance: 10 } },
+      shock:  { n: 'Shard of Shock', d: 'Melee hits also shock one enemy nearby.', onMeleeHit(e){ chainLightning(e, 40 * abilityMult(), 1, { kind: 'chain' }); } },
+      surge:  { n: 'Shard of Surge', d: 'Every kill adds 3% super energy.', onKill(){ addSuper(3); } }
+    }
   }
-  // void: { n: '...', element: 'void', ... }  <- your next subclass goes here
+  // void: { n: '...', element: 'void', supers: {...}, grenades: {...}, ... }  <- your next subclass goes here
 };
+const SHARD_SLOTS = 4;
+function loadoutOf(id){
+  const S = SUBCLASSES[id];
+  inv.loadout = inv.loadout || {};
+  const L = inv.loadout[id] || (inv.loadout[id] = {});
+  const first = o => Object.keys(o)[0];
+  if (!S.supers[L.super]) L.super = first(S.supers);
+  if (!S.grenades[L.grenade]) L.grenade = first(S.grenades);
+  if (!S.melees[L.melee]) L.melee = first(S.melees);
+  if (!Array.isArray(L.aspects)) L.aspects = Object.keys(S.aspects).slice(0, 2);
+  L.aspects = L.aspects.filter(a => S.aspects[a]).slice(0, 2);
+  if (!Array.isArray(L.shards)) L.shards = Object.keys(S.shards).slice(0, 2);
+  L.shards = L.shards.filter(f => S.shards[f]).slice(0, SHARD_SLOTS);
+  return L;
+}
+// the equipped subclass seen as one ability set: sub().super, sub().grenade, sub().melee
+let subView = null, subViewKey = '';
+function sub(){
+  const id = SUBCLASSES[inv.subclass] ? inv.subclass : 'tempest', L = loadoutOf(id);
+  const key = id + L.super + L.grenade + L.melee + L.aspects.join() + L.shards.join();
+  if (key !== subViewKey) {
+    const S = SUBCLASSES[id];
+    subView = { id, n: S.n, element: S.element, flavor: S.flavor, super: S.supers[L.super], grenade: S.grenades[L.grenade], melee: S.melees[L.melee],
+      mods: L.aspects.map(a => S.aspects[a]).concat(L.shards.map(f => S.shards[f])) };
+    subViewKey = key;
+  }
+  return subView;
+}
+const subMods = () => sub().mods;
+function subHook(name, ctx){ for (const m of subMods()) if (m[name]) m[name](ctx); }
+const hasMod = flag => subMods().some(m => m.flag === flag);
+function modStat(id){ let v = 0; for (const m of subMods()) if (m.stat && m.stat[id]) v += m.stat[id]; return v; }
+const burnMult = () => hasMod('longBurn') ? 1.5 : 1;
+const curClass = () => CLASSES[inv.cls] || CLASSES.outrider;
 
 // ---------- inventory state, items and saving ----------
 const SAVE_KEY = 'emberdrift.save.v1';
+// each class is its own character with its own save; the Outrider keeps the original save so nothing is lost
+const CHAR_KEY = 'emberdrift.char';
+const STARTER_SUB = { seer: 'tempest', outrider: 'cinder', bulwark: 'cinder' };
+let curChar = 'outrider';
+try { const c = localStorage.getItem(CHAR_KEY); if (c === 'seer' || c === 'outrider' || c === 'bulwark') curChar = c; } catch (e) {}
+function charSaveKey(c){ return c === 'outrider' ? SAVE_KEY : SAVE_KEY + '.' + c; }
 const SLOT_CAP = 10;            // unequipped items kept per slot on the character
 const VAULT_CAP = 300;          // items kept in the vault
 let uidN = 1;
@@ -2726,7 +3239,7 @@ function makeArmor(slot, tier, power, opts){
   return { uid: newUid(), kind: 'armor', slot, tier, power, stats, perks: ex ? [ex.perk] : [], exotic: ex ? ex.id : null,
            name: opts.name || (ex ? ex.name : pick(ASET) + ' ' + pick(ANAME[slot])) };
 }
-function starterInventory(){
+function starterInventory(cls){
   const items = [
     makeWeapon('kinetic', 0, 1000, { arch: 'auto', name: 'Field Issue Carbine' }),
     makeWeapon('energy', 0, 1000, { arch: 'smg', name: 'Spark Cutter' }),
@@ -2735,22 +3248,22 @@ function starterInventory(){
   ];
   items[1].element = 'arc';
   const equipped = {}; items.forEach(it => equipped[it.slot] = it.uid);
-  return { v: 1, items, vault: [], equipped, subclass: 'tempest', reserve: { shotgun: 12, sniper: 8, rocket: 4 } };
+  cls = cls || curChar;
+  return { v: 1, cls, items, vault: [], equipped, subclass: STARTER_SUB[cls] || 'cinder', reserve: { shotgun: 12, sniper: 8, rocket: 4 } };
 }
 function loadInv(){
-  try { const raw = localStorage.getItem(SAVE_KEY); if (raw) { const d = JSON.parse(raw); if (d && d.v === 1 && d.items && d.equipped) { if (!Array.isArray(d.vault)) d.vault = []; return d; } } } catch (e) {}
+  try { const raw = localStorage.getItem(charSaveKey(curChar)); if (raw) { const d = JSON.parse(raw); if (d && d.v === 1 && d.items && d.equipped) { if (!Array.isArray(d.vault)) d.vault = []; d.cls = curChar; return d; } } } catch (e) {}
   return starterInventory();
 }
-function saveInv(){ try { localStorage.setItem(SAVE_KEY, JSON.stringify(inv)); } catch (e) {} }
+function saveInv(){ try { localStorage.setItem(charSaveKey(inv.cls || curChar), JSON.stringify(inv)); } catch (e) {} }
 inv = loadInv();
 
 const itemBy = uid => inv.items.find(i => i.uid === uid);
 const equippedIn = slot => itemBy(inv.equipped[slot]);
 const equippedAll = () => WSLOTS.concat(ASLOTS).map(equippedIn).filter(Boolean);
 const curWeapon = () => equippedIn(WSLOTS[player.wslot]);
-const sub = () => SUBCLASSES[inv.subclass] || SUBCLASSES.tempest;
 function avgPower(){ const e = equippedAll(); return e.length ? Math.floor(e.reduce((a, i) => a + i.power, 0) / e.length) : 1000; }
-function armorStat(id){ return equippedAll().filter(i => i.kind === 'armor').reduce((a, i) => a + (i.stats[id] || 0), 0); }
+function armorStat(id){ return equippedAll().filter(i => i.kind === 'armor').reduce((a, i) => a + (i.stats[id] || 0), 0) + modStat(id); }
 function wstats(item){
   if (statCache[item.uid]) return statCache[item.uid];
   const s = JSON.parse(JSON.stringify(ARCH[item.arch]));
@@ -2817,7 +3330,7 @@ function abilityMult(){ return dmgMult(null); }
 const grenCd = () => sub().grenade.cd * (1 - armorStat('ordnance') * 0.006);
 const meleeCd = () => sub().melee.cd * (1 - armorStat('might') * 0.006);
 const superRate = () => 1 + armorStat('focus') * 0.01;
-const moveMult = () => (1 + armorStat('agility') * 0.004) * (buffStacks('haste') ? 1.15 : 1);
+const moveMult = () => (1 + armorStat('agility') * 0.004) * (buffStacks('haste') ? 1.15 : 1) * (player.sprinting && hasMod('stormStep') ? 1.15 : 1);
 const hurtMult = () => 1 - armorStat('fortitude') * 0.004;
 const regenDelay = () => Math.max(1.6, 3.4 - armorStat('recovery') * 0.02);
 function addSuper(n){ player.superE = Math.min(100, player.superE + n * superRate()); }
@@ -2928,7 +3441,7 @@ function damageEnemy(e, dmg, crit, point, src){
   if (e.rig && rand() < 0.6) e.rig.hit();
   if (src.kind === 'ally') { if (e.hp <= 0) killEnemy(e, { e, kind: 'ally' }); return e.hp <= 0; }
   showNum(point, dmg, crit ? 'crit' : '');
-  if (src.burn) burnEnemy(e, 3);
+  if (src.burn) burnEnemy(e, 3 * burnMult());
   addSuper(dmg * 0.035);
   const ctx = { w: src.w, e, dmg, precision: crit, point, kind: src.kind };
   if (src.w) fireHook('onHit', ctx);
@@ -2942,7 +3455,8 @@ function killEnemy(e, ctx){
   player.kills++;
   inv.cinders = (inv.cinders || 0) + (e.type === 'sentinel' ? 12 : 2);
   questEvent('kill', { type: e.type });
-  addSuper(5);
+  addSuper(5); addPassXp(e.type === 'sentinel' ? 150 : e.type === 'rival' ? 30 : 20);
+  subHook('onKill', ctx);
   burst(e.head.getWorldPosition(tmpV), e.s.glow, e.type === 'sentinel' ? 40 : 16, 7);
   sfx.kill();
   if (ctx.w) fireHook('onKill', ctx);
@@ -3094,19 +3608,130 @@ function meleeStrike(){
   if (player.melee > 0 || state !== 'play' || (loc && loc.social)) return;
   const M = sub().melee;
   player.melee = player.meleeMax = meleeCd(); sfx.melee(); meleeAnim = MELEE_T;
-  const fwd = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
   const color = ELEMENTS[sub().element].c;
+  const strike = (e, push) => {
+    const hp = e.head.getWorldPosition(new THREE.Vector3());
+    const dmg = M.dmg * abilityMult();
+    const killed = damageEnemy(e, dmg, false, hp, { kind: 'melee' });
+    M.hit(e, dmg); subHook('onMeleeHit', e);
+    hitmark(killed ? 'kill' : '');
+    if (push) e.pos.addScaledVector(push, M.push || 2.5);
+    burst(hp, color, 12, 6);
+  };
+  if (M.ranged) {
+    // a thrown melee hits the first enemy along your aim within range
+    const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    aimRay.set(camera.position, dir); aimRay.far = M.ranged;
+    const h = aimRay.intersectObjects(targets(), false).find(x => x.object.userData.enemy && !x.object.userData.enemy.dead);
+    jetTracer(camera.position.clone().addScaledVector(dir, 0.8).add(new THREE.Vector3(0, -0.15, 0)), h ? h.point : camera.position.clone().addScaledVector(dir, M.ranged), color, 3);
+    if (h) strike(h.object.userData.enemy, null);
+    return;
+  }
+  const fwd = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
   for (const e of enemies) {
     if (e.dead) continue;
     const to = e.pos.clone().sub(player.pos); to.y = 0; const d = to.length();
-    if (d < 3.4 && to.normalize().dot(fwd) > 0.5) {
-      const hp = e.head.getWorldPosition(new THREE.Vector3());
-      const dmg = M.dmg * abilityMult();
-      const killed = damageEnemy(e, dmg, false, hp, { kind: 'melee' });
-      M.hit(e, dmg);
-      hitmark(killed ? 'kill' : '');
-      e.pos.addScaledVector(to, 2.5); burst(hp, color, 12, 6);
-    }
+    if (d < 3.4 && to.normalize().dot(fwd) > 0.5) strike(e, to);
+  }
+}
+// ---------- class abilities, new supers and placed grenades ----------
+// timed effects that tick with the game (cleared when you travel)
+const abilityFx = [];
+function tickAbilityFx(dt){
+  for (let i = abilityFx.length - 1; i >= 0; i--) {
+    const f = abilityFx[i]; f.t += dt;
+    if (f.tick(dt, f) === false || f.t >= f.life) { if (f.end) f.end(f); abilityFx.splice(i, 1); }
+  }
+}
+function clearAbilityFx(){ for (const f of abilityFx) if (f.end) f.end(f); abilityFx.length = 0; }
+function castClass(){
+  if (player.clsCd > 0 || state !== 'play' || (loc && loc.social) || player.jet) return;
+  const A = curClass().ability;
+  player.clsCd = player.clsMax = A.cd;
+  A.use(); subHook('onClass', {});
+}
+const ringGeo = new THREE.TorusGeometry(1, 0.06, 6, 48); ringGeo.userData.shared = true;
+function seerCircle(){
+  const at = player.pos.clone().setY(0.08), m = new THREE.Mesh(ringGeo, glowMat(0x9fd8ff).clone());
+  m.rotation.x = Math.PI / 2; m.position.copy(at); m.scale.setScalar(5); scene.add(m);
+  sfx.reload(); burst(at.clone().setY(0.5), 0x9fd8ff, 20, 4);
+  abilityFx.push({ t: 0, life: 6, tick(dt, f){
+    m.material.opacity = 0.55 + Math.sin(time * 6) * 0.2;
+    if (Math.hypot(player.pos.x - at.x, player.pos.z - at.z) < 5) { player.hp = Math.min(100, player.hp + 30 * dt); addSuper(1.6 * dt); }
+    if (rand() < 0.3) burst(at.clone().add(new THREE.Vector3((rand() - 0.5) * 8, 0.2, (rand() - 0.5) * 8)), 0x9fd8ff, 1, 1.5);
+  }, end(){ scene.remove(m); m.material.dispose(); } });
+}
+function slipRoll(){
+  let f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0) + joy.y + pad.y, s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0) + joy.x + pad.x;
+  if (Math.hypot(f, s) < 0.2) { f = 0; s = -1; }
+  const fw = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)), rt = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
+  const dir = fw.multiplyScalar(f).addScaledVector(rt, s).normalize();
+  const cw = curWeapon(); if (cw) { refillMag(cw, 1); player.reloading = 0; }
+  sfx.jump(); fovPunch = 0.4;
+  abilityFx.push({ t: 0, life: 0.28, tick(dt){ player.pos.addScaledVector(dir, 19 * dt); collide(player.pos, 0.45); player.crouch = 0.8; } });
+}
+function bastionWall(){
+  const fw = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)), at = player.pos.clone().addScaledVector(fw, 3);
+  const m = new THREE.Mesh(new THREE.BoxGeometry(5, 2.6, 0.25), new THREE.MeshBasicMaterial({ color: 0xff8a6a, transparent: true, opacity: 0.32, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  m.position.set(at.x, 1.3, at.z); m.rotation.y = player.yaw; scene.add(m); m.updateMatrixWorld();
+  // three colliders stop bullets and movement, and the mesh blocks enemy line of sight
+  const rt = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw)), cols = [-1.7, 0, 1.7].map(o => ({ x: at.x + rt.x * o, z: at.z + rt.z * o, r: 0.9, h: 2.6 }));
+  colliders.push(...cols); solidMeshes.push(m);
+  sfx.boom(); burst(m.position.clone(), 0xff8a6a, 24, 5);
+  abilityFx.push({ t: 0, life: 8, tick(){ m.material.opacity = 0.26 + Math.sin(time * 5) * 0.06; }, end(){
+    scene.remove(m); m.geometry.dispose(); m.material.dispose();
+    for (const c of cols) { const i = colliders.indexOf(c); if (i >= 0) colliders.splice(i, 1); }
+    const k = solidMeshes.indexOf(m); if (k >= 0) solidMeshes.splice(k, 1);
+  } });
+}
+function superSunspear(){
+  const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  launchRocket(fwd, 52, 0xffc060, p => {
+    blast(p, 12, 760 * abilityMult(), 0xff8a3a, { kind: 'super', burn: true }, false);
+    for (const e of enemies) if (!e.dead && e.pos.distanceTo(p) < 12) burnEnemy(e, 5 * burnMult());
+  }, 0.5);
+}
+function superThunderhead(){
+  const near = enemies.filter(e => !e.dead && e.pos.distanceTo(player.pos) < 45).sort((a, b) => a.pos.distanceTo(player.pos) - b.pos.distanceTo(player.pos));
+  for (let i = 0; i < 6; i++) setTimeout(() => {
+    if (state !== 'play') return;
+    const e = near.filter(o => !o.dead)[i % Math.max(1, near.filter(o => !o.dead).length)];
+    const at = e ? e.pos.clone() : player.pos.clone().add(new THREE.Vector3((rand() - 0.5) * 30, 0, (rand() - 0.5) * 30));
+    bolt(at.clone().setY(40), at.clone().setY(0.5));
+    blast(at.setY(0.4), 4.5, 260 * abilityMult(), 0x7fd8ff, { kind: 'super' }, false);
+  }, 200 + i * 380);
+}
+// a grenade that sits where it lands and goes off when an enemy comes close
+function armMine(p, color, radius, life, boom){
+  const m = new THREE.Mesh(grenGeo, grenMat[color] || (grenMat[color] = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 2 })));
+  m.position.copy(p).setY(0.15); scene.add(m);
+  abilityFx.push({ t: 0, life, tick(){
+    m.scale.setScalar(1 + Math.sin(time * 10) * 0.25);
+    if (enemies.some(e => !e.dead && e.pos.distanceTo(m.position) < radius)) return false;
+  }, end(){ scene.remove(m); boom(m.position.clone()); } });
+}
+// a lingering field that hurts enemies inside it on a beat
+function armField(p, color, radius, life, zap){
+  const ring = new THREE.Mesh(ringGeo, glowMat(color).clone()); ring.rotation.x = Math.PI / 2; ring.position.copy(p).setY(0.1); ring.scale.setScalar(radius); scene.add(ring);
+  let beat = 0;
+  abilityFx.push({ t: 0, life, tick(dt){
+    ring.material.opacity = 0.4 + Math.random() * 0.4;
+    if ((beat -= dt) > 0) return;
+    beat = 0.5;
+    for (const e of enemies) if (!e.dead && e.pos.distanceTo(ring.position) < radius) { bolt(ring.position.clone().setY(0.4), e.head.getWorldPosition(new THREE.Vector3())); zap(e); }
+  }, end(){ scene.remove(ring); ring.material.dispose(); } });
+}
+// jumps differ by class: Seer glides, Outrider jumps twice more, Bulwark gets a long lift
+function airJump(){
+  const J = curClass().jump.id;
+  if (J === 'triple') {
+    if ((player.airJumps || 0) >= 2) return;
+    player.airJumps = (player.airJumps || 0) + 1; player.vel.y = Math.max(player.vel.y, 0) + 7.2; sfx.jump(); burst(player.pos.clone(), 0xffb36a, 6, 3);
+  } else if (J === 'glide') {
+    if (player.lifted) { player.glide = !player.glide; return; }
+    player.lifted = true; player.glide = true; player.vel.y = Math.max(player.vel.y, 2); sfx.jump(); burst(player.pos.clone(), 0x9fd8ff, 8, 3);
+  } else if (!player.lifted) {
+    player.lifted = true; player.vel.y = Math.max(player.vel.y, 0) + 10.5; sfx.jump(); burst(player.pos.clone(), 0xff8a6a, 10, 3);
   }
 }
 function castSuper(){
@@ -3170,7 +3795,7 @@ function show(id, on){ $(id).hidden = !on; }
 const hero = buildPlayerModel(0x7fd8ff);
 hero.g.position.set(0, 0, 8); scene.add(hero.g);
 function startGame(){
-  initAudio(); travelTo('tower');
+  initAudio(); openSelect();
   if (isTouch) {
     try { const el = document.documentElement; const r = el.requestFullscreen && el.requestFullscreen(); if (r && r.catch) r.catch(() => {}); } catch (e) {}
     try { const r = screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape'); if (r && r.catch) r.catch(() => {}); } catch (e) {}
@@ -3190,8 +3815,8 @@ function resetGame(){
   if (player.jet) { player.jet.abandoned = true; player.jet = null; document.body.classList.remove('flying'); show('jetHud', false); gun.visible = !(loc && loc.social); stopEngine(); setNear(0.05); }
   player.eject = false;
   clearList(enemies, 'g'); clearList(shots, 'm'); clearList(grenades, 'm'); clearList(loot, 'g');
-  pendingSpawns.length = 0; bossRef = null;
-  Object.assign(player, { slideT: 0, crouch: 0, hp: 100, lastHurt: -99, reloading: 0, fireCd: 0, gren: 0, melee: 0, superE: 35, kills: 0, wslot: 0, swapT: 0, burstLeft: 0, yaw: 0, pitch: 0, onGround: true, lifted: false });
+  pendingSpawns.length = 0; bossRef = null; clearAbilityFx();
+  Object.assign(player, { clsCd: 0, airJumps: 0, glide: false, slideT: 0, crouch: 0, hp: 100, lastHurt: -99, reloading: 0, fireCd: 0, gren: 0, melee: 0, superE: 35, kills: 0, wslot: 0, swapT: 0, burstLeft: 0, yaw: 0, pitch: 0, onGround: true, lifted: false });
   for (const k in mags) delete mags[k]; for (const k in buffs) delete buffs[k];
   applyWeaponLook(); updateAbilityLabels();
   player.pos.set(0, 0, 8); player.vel.set(0, 0, 0);
@@ -3210,18 +3835,22 @@ $('goHome').addEventListener('click', () => travelTo('tower'));
 // ---------- gear screen ----------
 let gearSel = 'kinetic', gearItem = null, gearMsg = '', resetArmed = false, scrapArmed = null;
 const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+let gearFrom = 'play';
 function openGear(){
-  if (state !== 'play') return;
+  if (state !== 'play' && state !== 'orbit') return;
+  gearFrom = state; show('orbitOv', false);
   state = 'gear'; firing = false; mouseFiring = false; player.burstLeft = 0;
   newGear = false; $('tGear').classList.remove('new'); $('gearDot').hidden = true;
   if (document.exitPointerLock && locked) document.exitPointerLock();
   show('touch', false); show('gearOv', true);
-  gearItem = equippedIn(gearSel) || null; gearMsg = ''; resetArmed = false;
+  gearItem = equippedIn(gearSel) || null; gearMsg = ''; resetArmed = false; gearDrawer = false;
   renderGear();
 }
 function closeGear(){
   if (state !== 'gear') return;
-  show('gearOv', false); show('touch', isTouch);
+  show('subOv', false); show('gearOv', false); $('gearOv').classList.remove('studio');
+  if (gearFrom === 'orbit') { state = 'orbit'; studioMode('orbit'); show('orbitOv', true); renderOrbit(); return; }
+  studioMode(null); show('hud', true); show('touch', isTouch);
   state = 'play'; last = performance.now(); requestLock();
 }
 function tileFor(item, label){
@@ -3254,49 +3883,17 @@ function renderGear(){
   $('gPower').textContent = avgPower(); $('vCount').textContent = inv.vault.length;
   document.querySelectorAll('.gtab').forEach(t => t.setAttribute('aria-selected', t.dataset.tab === gearTab));
   const L = $('gLeft'), M = $('gMid'), R = $('gRight');
-  const keep = [L.scrollTop, M.scrollTop];
+  const keep = [L.scrollTop, M.scrollTop, R.scrollTop];
   L.innerHTML = M.innerHTML = R.innerHTML = '';
-  if (gearTab === 'vault') renderVault(L, M); else renderCharacter(L, M);
-  if (gearSel === 'subclass' && gearTab === 'char') renderSubclassPane(R);
-  else if (gearItem && (inv.items.includes(gearItem) || inVault(gearItem))) R.append(detailCard(gearItem, equippedIn(gearItem.slot)));
-  else R.append(el('p', 'gempty', 'Tap an item to see its stats and perks.'));
-  L.scrollTop = keep[0]; M.scrollTop = keep[1];
-}
-function renderCharacter(L, M){
-  const slots = el('div', 'gslots');
-  const subT = el('button', 'gtile gsub'); subT.type = 'button';
-  subT.style.setProperty('--rc', ELEMENTS[sub().element].css);
-  subT.append(el('span', 'gslot', 'Subclass'), el('b', '', sub().n), el('span', 'gmeta', sub().super.n));
-  subT.setAttribute('aria-pressed', gearSel === 'subclass');
-  subT.addEventListener('click', () => { gearSel = 'subclass'; gearItem = null; gearMsg = ''; renderGear(); });
-  slots.append(subT);
-  WSLOTS.concat(ASLOTS).forEach(slot => {
-    const it = equippedIn(slot); if (!it) return;
-    const t = tileFor(it, SLOT_NAMES[slot]);
-    const spare = inv.items.filter(i => i.slot === slot && i.uid !== it.uid).length;
-    if (spare) t.append(el('span', 'gcount', spare));
-    t.setAttribute('aria-pressed', gearSel === slot);
-    t.addEventListener('click', () => { gearSel = slot; gearItem = it; gearMsg = ''; renderGear(); });
-    slots.append(t);
-  });
-  L.append(slots);
-  const st = el('div', 'gstats');
-  STATS.forEach(s => {
-    const v = armorStat(s.id), row = el('div', 'gstat'); row.title = s.d;
-    row.append(el('span', '', s.n), el('i', ''), el('b', '', v));
-    row.querySelector('i').style.setProperty('--v', Math.min(100, v / 60 * 100) + '%');
-    st.append(row);
-  });
-  L.append(st);
-  if (gearSel === 'subclass') { M.append(el('p', 'gempty', 'Pick a subclass on the right.')); return; }
-  const eq = equippedIn(gearSel), mine = inv.items.filter(i => i.slot === gearSel), stored = inv.vault.filter(i => i.slot === gearSel).length;
-  const head = el('div', 'gmidhead');
-  head.append(el('div', 'lbl', SLOT_NAMES[gearSel] + ' · ' + (mine.length - 1) + ' / ' + SLOT_CAP + ' spare'));
-  if (stored) { const vb = el('button', 'btn ghost small', stored + ' in vault'); vb.type = 'button'; vb.onclick = () => { gearTab = 'vault'; Object.assign(vf, { kind: WSLOTS.includes(gearSel) ? 'weapon' : 'armor', slot: gearSel, arch: 'all', element: 'all', tier: 'all', where: 'vault' }); saveVf(); renderGear(); }; head.append(vb); }
-  M.append(head);
-  const list = el('div', 'glist');
-  mine.sort((a, b) => (b === eq) - (a === eq) || b.power - a.power || b.tier - a.tier).forEach(it => list.append(itemTile(it, it === eq ? 'Equipped' : RARITY[it.tier].n)));
-  M.append(list);
+  // the Character tab is see-through: the hero stands in the studio between the two columns
+  $('gearOv').classList.toggle('studio', gearTab === 'char');
+  if (gearTab === 'char') { studioMode('char'); refreshHeroGun(); renderCharScreen(L, M, R); }
+  else {
+    renderVault(L, M);
+    if (gearItem && (inv.items.includes(gearItem) || inVault(gearItem))) R.append(detailCard(gearItem, equippedIn(gearItem.slot)));
+    else R.append(el('p', 'gempty', 'Tap an item to see its stats and perks.'));
+  }
+  L.scrollTop = keep[0]; M.scrollTop = keep[1]; R.scrollTop = keep[2];
 }
 function itemTile(it, label){
   const t = tileFor(it, label);
@@ -3412,34 +4009,12 @@ function detailCard(it, eq){
   if (gearMsg) c.append(el('p', 'gmsg', gearMsg));
   return c;
 }
-function renderSubclassPane(pane){
-  pane.append(el('div', 'lbl', 'Subclass · choose your powers'));
-  const list = el('div', 'gsublist');
-  Object.keys(SUBCLASSES).forEach(id => {
-    const S = SUBCLASSES[id];
-    const card = el('button', 'gsubcard'); card.type = 'button';
-    card.style.setProperty('--rc', ELEMENTS[S.element].css);
-    card.setAttribute('aria-pressed', inv.subclass === id);
-    card.append(el('b', '', S.n), el('span', 'gmeta', S.flavor));
-    [['Super', S.super], ['Grenade', S.grenade], ['Melee', S.melee]].forEach(([k, A]) => {
-      const r = el('div', 'gability'); r.append(el('span', 'gslot', k), el('b', '', A.n), el('span', '', A.d)); card.append(r);
-    });
-    card.addEventListener('click', () => { inv.subclass = id; saveInv(); player.gren = 0; player.melee = 0; updateAbilityLabels(); renderGear(); });
-    list.append(card);
-  });
-  pane.append(list);
-  const rb = el('button', 'btn ghost', resetArmed ? 'Tap again to erase all gear' : 'Reset all gear'); rb.type = 'button';
-  rb.addEventListener('click', () => {
-    if (!resetArmed) { resetArmed = true; return renderGear(); }
-    inv = starterInventory(); saveInv(); for (const k in mags) delete mags[k]; for (const k in statCache) delete statCache[k];
-    resetArmed = false; player.wslot = 0; applyWeaponLook(); updateAbilityLabels(); gearSel = 'kinetic'; gearItem = equippedIn('kinetic'); renderGear();
-  });
-  pane.append(rb);
-}
 function updateAbilityLabels(){
   $('superLbl').textContent = sub().super.n + (isTouch ? '' : ' · F');
   const c = ELEMENTS[sub().element].css;
   document.documentElement.style.setProperty('--subc', c);
+  document.documentElement.style.setProperty('--clsc', curClass().css);
+  $('tClass').textContent = curClass().ability.n.split(' ')[0];
   hero.setAccent(ELEMENTS[sub().element].c);
 }
 $('gearClose').addEventListener('click', closeGear);
@@ -3565,7 +4140,7 @@ function questEvent(type, d){
     if (!inc) continue;
     st.prog += inc; changed = true;
     if (st.prog >= step.n) {
-      st.step++; st.prog = 0;
+      st.step++; st.prog = 0; addPassXp(250);
       if (st.step >= q.steps.length) completeQuest(id);
       else { toastText('#ffd04a', 'Quest updated', q.steps[st.step].txt, q.title); renderTracker(id); }
     } else renderTracker();
@@ -3578,7 +4153,7 @@ function completeQuest(id){
   inv.cinders += q.reward.cinders || 0;
   let line = '+' + (q.reward.cinders || 0) + ' Cinders';
   if (q.reward.tier !== undefined) { const it = rollItem(q.reward.tier); addItem(it); toast(it.tier, it.name, 'Quest reward', 'Check your gear'); line += ' · ' + RARITY[it.tier].n + ' ' + (it.kind === 'weapon' ? ARCH[it.arch].n : 'armor'); }
-  saveInv(); banner('Quest complete', q.title, line); sfx.superS(); renderTracker();
+  addPassXp(800); saveInv(); banner('Quest complete', q.title, line); sfx.superS(); renderTracker();
 }
 function banner(head, title, line){
   const b = $('banner'); b.innerHTML = '';
@@ -3730,18 +4305,21 @@ let interactJet = null;
 function interact(){ if (interactNpc && state === 'play') openTalk(interactNpc); }
 
 // ---------- director ----------
-let dirSel = 'tower', dirTab = 'map';
+let dirSel = 'tower', dirTab = 'dest', dirFrom = 'play';
 const DIR_ORDER = Object.keys(LOCATIONS);
 function openDirector(tab){
-  if (state !== 'play' && state !== 'pause') return;
+  if (state !== 'play' && state !== 'pause' && state !== 'orbit') return;
+  dirFrom = state === 'orbit' ? 'orbit' : 'play'; show('orbitOv', false);
   state = 'director'; firing = false; mouseFiring = false; adsHeld = false;
   if (document.exitPointerLock && locked) document.exitPointerLock();
   show('pauseOv', false); show('touch', false); show('dirOv', true);
-  dirSel = loc ? loc.id : 'tower'; dirTab = tab || 'map'; renderDirector();
+  dirSel = loc ? loc.id : 'tower'; dirTab = tab || 'dest'; renderDirector();
 }
 function closeDirector(){
   if (state !== 'director') return;
-  show('dirOv', false); show('touch', isTouch);
+  show('dirOv', false);
+  if (dirFrom === 'orbit') { state = 'orbit'; show('orbitOv', true); renderOrbit(); return; }
+  show('touch', isTouch);
   state = 'play'; last = performance.now(); requestLock();
 }
 function questsAt(id){
@@ -3751,8 +4329,8 @@ function renderDirector(){
   const oldInfo = $('dirInfo'); if (oldInfo) oldInfo.remove();
   document.querySelectorAll('.dtab').forEach(t => t.setAttribute('aria-selected', t.dataset.tab === dirTab));
   $('dirPower').textContent = avgPower(); $('dirCinders').textContent = qs() && inv.cinders;
-  show('dirMap', dirTab === 'map'); show('dirPane', dirTab !== 'map');
-  if (dirTab === 'map') renderMap(); else if (dirTab === 'quests') renderQuestLog(); else renderStore();
+  show('dirMap', dirTab === 'dest'); show('dirPane', dirTab !== 'dest');
+  if (dirTab === 'dest') renderMap(); else if (dirTab === 'quests') renderQuestLog(); else if (dirTab === 'pass') renderPass(); else if (dirTab === 'map') renderLocalMap(); else renderStore();
 }
 function renderMap(){
   const map = $('dirMap'); map.innerHTML = '';
@@ -3772,7 +4350,7 @@ function renderMap(){
     c.setAttribute('r', Math.hypot((m.x - home.x) * mw / 100, (m.y - home.y) * mh / 100) || 1);
     c.setAttribute('fill', 'none'); c.setAttribute('stroke', 'rgba(238,241,246,.05)'); svg.append(c);
   }
-  map.append(svg);
+  map.append(svg, hexRow());
   for (const id of DIR_ORDER) {
     const L = LOCATIONS[id], m = L.map, locked = !ownsPack(L.pack);
     const b = el('button', 'dnode' + (id === dirSel ? ' sel' : '') + (locked ? ' locked' : '')); b.type = 'button';
@@ -3797,8 +4375,8 @@ function renderMap(){
   info.append(act);
   const go = el('button', 'btn', 'Launch'); go.type = 'button';
   if (!ownsPack(L.pack)) { go.textContent = 'View expansion'; go.onclick = () => { dirTab = 'store'; renderDirector(); }; }
-  else if (loc && loc.id === dirSel && L.social) { go.textContent = 'You are here'; go.disabled = true; go.style.opacity = 0.5; }
-  else { if (loc && loc.id === dirSel) go.textContent = 'Restart patrol'; go.onclick = launchSel; }
+  else if (loc && loc.id === dirSel && L.social && dirFrom !== 'orbit') { go.textContent = 'You are here'; go.disabled = true; go.style.opacity = 0.5; }
+  else { if (loc && loc.id === dirSel && !L.social && dirFrom !== 'orbit') go.textContent = 'Restart patrol'; go.onclick = launchSel; }
   info.append(go);
   // on small screens the info card sits in its own column beside the map, not on top of it
   (matchMedia('(max-height:520px),(max-width:900px)').matches ? $('dirOv') : map).append(info);
@@ -3806,7 +4384,7 @@ function renderMap(){
 function launchSel(){
   const L = LOCATIONS[dirSel];
   if (!ownsPack(L.pack)) { dirTab = 'store'; renderDirector(); return; }
-  if (loc && loc.id === dirSel && L.social) return;
+  if (loc && loc.id === dirSel && L.social && dirFrom !== 'orbit') return;
   travelTo(dirSel);
 }
 function renderQuestLog(){
@@ -3847,7 +4425,557 @@ function renderStore(){
 document.querySelectorAll('.dtab').forEach(t => t.addEventListener('click', () => { dirTab = t.dataset.tab; renderDirector(); sfx.reload(); }));
 $('dirClose').addEventListener('click', closeDirector);
 function dirCycle(step){ const i = DIR_ORDER.indexOf(dirSel); dirSel = DIR_ORDER[(i + step + DIR_ORDER.length) % DIR_ORDER.length]; renderDirector(); sfx.reload(); }
-function dirTabCycle(step){ const T = ['map', 'quests', 'store']; dirTab = T[(T.indexOf(dirTab) + step + 3) % 3]; renderDirector(); }
+// ======================================================================
+// CHARACTERS, ORBIT AND THE MENU SCREENS
+// The studio is a small 3D set floating high above the current world. The
+// character select, the character screen and orbit all render it; while it
+// is showing, the world and sky are hidden and the hero model is moved in.
+// ======================================================================
+const studio = { g: new THREE.Group(), stand: new THREE.Group(), orbit: new THREE.Group(), mode: null, prev: null,
+  cam: new THREE.Vector3(), look: new THREE.Vector3(), camGoal: new THREE.Vector3(), lookGoal: new THREE.Vector3(), spin: 0, spinV: 0, fov: 34 };
+studio.g.position.set(0, 600, 0); studio.g.visible = false;
+studio.g.add(studio.stand, studio.orbit); scene.add(studio.g);
+{
+  // backdrop: a dark gradient dome tinted by the class or element, a lit floor disc, the emblem and drifting embers
+  const grad = canvasTex(8, 256, (x, w, h) => {
+    const g = x.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, '#05060a'); g.addColorStop(0.42, '#141220'); g.addColorStop(0.5, '#3a2a3a'); g.addColorStop(0.53, '#1c1622'); g.addColorStop(1, '#040408');
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+  });
+  studio.domeMat = new THREE.MeshBasicMaterial({ map: grad, side: THREE.BackSide, fog: false });
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(40, 32, 16), studio.domeMat); dome.renderOrder = -1;
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(2.6, 48), new THREE.MeshStandardMaterial({ color: 0x15141c, metalness: 0.4, roughness: 0.55, fog: false }));
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
+  studio.ringMat = new THREE.MeshBasicMaterial({ color: 0xffb36a, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(1.15, 1.19, 64), studio.ringMat); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.01;
+  const ring2 = new THREE.Mesh(new THREE.RingGeometry(2.5, 2.52, 64), studio.ringMat); ring2.rotation.x = -Math.PI / 2; ring2.position.y = 0.01;
+  studio.emblemMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  studio.emblem = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.2), studio.emblemMat); studio.emblem.position.set(0, 1.6, -2.6);
+  const n = 160, p = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { p[i * 3] = (Math.random() - 0.5) * 9; p[i * 3 + 1] = Math.random() * 4.5; p[i * 3 + 2] = -1 - Math.random() * 5; }
+  const mg = new THREE.BufferGeometry(); mg.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  studio.moteMat = new THREE.PointsMaterial({ color: 0xffb36a, size: 0.035, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  studio.motes = new THREE.Points(mg, studio.moteMat);
+  studio.stand.add(dome, floor, ring, ring2, studio.emblem, studio.motes);
+  studio.emblems = {};
+}
+function studioEmblem(id, css){
+  const k = id + css;
+  if (!studio.emblems[k]) studio.emblems[k] = glyphTexture(id, css, 512);
+  studio.emblemMat.map = studio.emblems[k]; studio.emblemMat.needsUpdate = true;
+}
+function studioTint(hex){
+  const c = new THREE.Color(hex);
+  studio.domeMat.color.setRGB(1, 1, 1).lerp(c, 0.45); studio.ringMat.color.copy(c); studio.moteMat.color.copy(c);
+}
+
+// ---------- orbit: your ship over the planet you last visited ----------
+function buildShip(){
+  const g = new THREE.Group();
+  const hull = new THREE.MeshStandardMaterial({ color: 0xc4c8d2, metalness: 0.55, roughness: 0.38, fog: false });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x1a1e2c, metalness: 0.7, roughness: 0.35, fog: false });
+  const trim = new THREE.MeshStandardMaterial({ color: 0x111111, emissive: 0xffb36a, emissiveIntensity: 1.4, fog: false });
+  // top-down silhouette, extruded and laid flat: a swept delta with forward canards
+  const half = [[0, 3.3], [0.32, 2.3], [0.5, 1.2], [0.62, 0.5], [2.6, -0.9], [2.7, -1.35], [1.0, -1.1], [0.8, -1.75], [0.3, -1.6]];
+  const s = new THREE.Shape(); half.forEach(([x, y], i) => i ? s.lineTo(x, y) : s.moveTo(x, y));
+  for (let i = half.length - 1; i >= 0; i--) s.lineTo(-half[i][0], half[i][1]);
+  const hg = new THREE.ExtrudeGeometry(s, { depth: 0.28, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.06, bevelSegments: 1 });
+  hg.rotateX(-Math.PI / 2); hg.translate(0, -0.14, 0);
+  const body = new THREE.Mesh(hg, hull); g.add(body);
+  // spine and canopy
+  const spine = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.26, 3.2), dark); spine.position.set(0, 0.22, 0.1); g.add(spine);
+  const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 10), new THREE.MeshStandardMaterial({ color: 0x0a1018, metalness: 0.9, roughness: 0.08, emissive: 0x2a1a10, fog: false }));
+  canopy.scale.set(0.55, 0.42, 1.5); canopy.position.set(0, 0.32, -1.2); g.add(canopy);
+  // engines with glowing exhausts and soft plumes
+  studio.plumes = [];
+  for (const x of [-0.62, 0.62]) {
+    const eng = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.3, 1.4, 12), dark); eng.rotation.x = Math.PI / 2; eng.position.set(x, 0.05, 1.25); g.add(eng);
+    const ex = new THREE.Mesh(new THREE.CircleGeometry(0.22, 16), trim); ex.position.set(x, 0.05, 1.96); g.add(ex);
+    const plume = new THREE.Mesh(new THREE.ConeGeometry(0.22, 2.4, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0xffb36a, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    plume.rotation.x = -Math.PI / 2; plume.position.set(x, 0.05, 3.15); g.add(plume); studio.plumes.push(plume);
+  }
+  // tail fins and glowing leading edges
+  for (const x of [-1.9, 1.9]) { const fin = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.55, 0.7), hull); fin.position.set(x, 0.3, -0.85); fin.rotation.x = 0.35; g.add(fin); }
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(hg, 30), new THREE.LineBasicMaterial({ color: 0xffb36a, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, fog: false }));
+  g.add(edges);
+  studio.shipTrim = [trim, edges.material].concat(studio.plumes.map(p => p.material));
+  g.traverse(o => { if (o.isMesh) o.castShadow = false; });
+  return g;
+}
+{
+  const O = studio.orbit;
+  const space = new THREE.Mesh(new THREE.SphereGeometry(300, 24, 12), new THREE.MeshBasicMaterial({ color: 0x020308, side: THREE.BackSide, fog: false }));
+  space.renderOrder = -1; O.add(space);
+  const n = 1800, p = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { const v = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(260); p.set([v.x, v.y, v.z], i * 3); }
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  O.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xffffff, size: 1.3, sizeAttenuation: false, transparent: true, opacity: 0.8, fog: false, depthWrite: false })));
+  studio.planetMat = new THREE.MeshLambertMaterial({ fog: false, emissive: 0x0a0608 });
+  studio.planet = new THREE.Mesh(new THREE.SphereGeometry(90, 64, 40), studio.planetMat);
+  studio.planet.position.set(10, -102, -70); studio.planet.rotation.z = 0.25; O.add(studio.planet);
+  // a thin glowing rim of atmosphere, brightest at the planet's edge
+  studio.atmoMat = new THREE.ShaderMaterial({
+    uniforms: { c: { value: new THREE.Color(0xffb080) } }, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide,
+    vertexShader: 'varying vec3 vN; varying vec3 vV; void main(){ vec4 mv = modelViewMatrix * vec4(position,1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+    fragmentShader: 'uniform vec3 c; varying vec3 vN; varying vec3 vV; void main(){ float f = pow(1.0 - abs(dot(vN, vV)), 2.5); gl_FragColor = vec4(c * f * 1.6, f); }'
+  });
+  const atmo = new THREE.Mesh(new THREE.SphereGeometry(94, 64, 40), studio.atmoMat); atmo.position.copy(studio.planet.position); O.add(atmo);
+  const sunTex = canvasTex(128, 128, (x, w) => { const g = x.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); g.addColorStop(0, 'rgba(255,250,235,1)'); g.addColorStop(0.15, 'rgba(255,220,170,.8)'); g.addColorStop(1, 'rgba(255,160,90,0)'); x.fillStyle = g; x.fillRect(0, 0, w, w); });
+  const sunS = new THREE.Sprite(new THREE.SpriteMaterial({ map: sunTex, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  sunS.position.set(160, 70, -200); sunS.scale.setScalar(70); O.add(sunS);
+  studio.ship = buildShip(); studio.ship.rotation.y = -0.55; O.add(studio.ship);
+}
+let planetTexFor = '';
+function orbitPlanet(){
+  const L = loc || LOCATIONS.tower;
+  if (planetTexFor === L.id) return;
+  planetTexFor = L.id;
+  const [c0, c1, c2] = L.map.c, r = mulberry32(L.seed || 1);
+  const t = canvasTex(1024, 512, (x, w, h) => {
+    const g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, c2); g.addColorStop(0.5, c1); g.addColorStop(1, c2);
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+    // continents and storm bands
+    for (let i = 0; i < 90; i++) { x.globalAlpha = 0.18 + r() * 0.25; x.fillStyle = r() < 0.5 ? c2 : c0; x.beginPath(); x.ellipse(r() * w, r() * h, 20 + r() * 120, 8 + r() * 40, r() * 3, 0, 6.3); x.fill(); }
+    x.globalAlpha = 0.25; x.fillStyle = '#fff';
+    for (let i = 0; i < 140; i++) x.fillRect(r() * w, r() * h, 30 + r() * 160, 1 + r() * 2);
+    x.globalAlpha = 1;
+  });
+  if (studio.planetMat.map) studio.planetMat.map.dispose();
+  studio.planetMat.map = t; studio.planetMat.needsUpdate = true;
+  studio.atmoMat.uniforms.c.value.set(c1).lerp(new THREE.Color(0xffffff), 0.35);
+}
+
+// ---------- the hero's held weapon (a copy of the first-person gun) ----------
+const heroGun = new THREE.Group(); hero.holder.add(heroGun);
+let heroGunKey = '';
+function refreshHeroGun(){
+  const w = curWeapon(); if (!w) return;
+  applyWeaponLook();   // the first-person gun is only built on landing, and the hero copies it
+  const key = w.uid + '|' + gunBody.children.length + '|' + gunModelKey;
+  if (key === heroGunKey) return;
+  heroGunKey = key;
+  while (heroGun.children.length) heroGun.remove(heroGun.children[0]);
+  for (const c of gunBody.children) { const k = c.clone(true); heroGun.add(k); }
+  heroGun.traverse(o => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; } });
+}
+
+// ---------- studio modes ----------
+const STUDIO_CAM = {
+  select: { cam: [1.15, 1.2, 4.6], look: [1.15, 1.0, 0], fov: 34 },
+  char:   { cam: [0, 1.05, 4.7], look: [0, 0.93, 0], fov: 32 },
+  orbit:  { cam: [-3.2, 1.3, 9.5], look: [-1.6, 0.1, 0], fov: 38 }
+};
+function studioMode(m){
+  if (m === studio.mode) return;
+  const was = studio.mode;
+  if (m && !was) {
+    studio.prev = { parent: hero.g.parent, pos: hero.g.position.clone(), rot: hero.g.rotation.y, vis: hero.g.visible, fov: camera.fov, near: camera.near };
+    studio.prev.sky = [planet.visible, ring.visible, moonGroup.visible];
+    world.visible = false; skyGroup.visible = false; planet.visible = ring.visible = moonGroup.visible = false; gunBody.visible = false; if (fp.root) fp.root.visible = false;
+    show('hud', false); show('touch', false);
+  }
+  studio.mode = m;
+  if (!m) {
+    const p = studio.prev; studio.g.visible = false; world.visible = true; skyGroup.visible = true; gunBody.visible = true;
+    [planet.visible, ring.visible, moonGroup.visible] = p.sky;
+    p.parent.add(hero.g); hero.g.position.copy(p.pos); hero.g.rotation.y = p.rot; hero.g.visible = p.vis; hero.armed = false;
+    camera.fov = p.fov; camera.near = p.near; camera.updateProjectionMatrix();
+    return;
+  }
+  studio.g.visible = true;
+  studio.stand.visible = m !== 'orbit'; studio.orbit.visible = m === 'orbit';
+  if (m === 'orbit') { orbitPlanet(); hero.g.visible = false; }
+  else {
+    studio.stand.add(hero.g); hero.g.position.set(0, 0, 0); hero.g.visible = true;
+    if (m === 'char') { refreshHeroGun(); hero.armed = true; } else hero.armed = false;
+    if (was !== 'select' && was !== 'char') { studio.spin = 0; studio.spinV = 0; }
+  }
+  const C = STUDIO_CAM[m];
+  studio.camGoal.fromArray(C.cam); studio.lookGoal.fromArray(C.look); studio.fov = C.fov;
+  if (!was || was === 'orbit' || m === 'orbit') { studio.cam.copy(studio.camGoal); studio.look.copy(studio.lookGoal); }
+  camera.near = 0.05; camera.updateProjectionMatrix();
+}
+function studioCamera(dt){
+  const k = Math.min(1, dt * 5);
+  const C = STUDIO_CAM[studio.mode];
+  // on narrow screens the select shot centres the hero
+  if (studio.mode === 'select') { const off = innerWidth > innerHeight * 1.25 ? 1.15 : 0; studio.camGoal.x = studio.lookGoal.x = off; }
+  if (studio.mode === 'orbit') { studio.camGoal.set(C.cam[0] + Math.sin(time * 0.07) * 0.6, C.cam[1] + Math.sin(time * 0.11) * 0.2, C.cam[2]); }
+  studio.cam.lerp(studio.camGoal, k); studio.look.lerp(studio.lookGoal, k);
+  camera.position.copy(studio.cam).add(studio.g.position);
+  camera.lookAt(_sv.copy(studio.look).add(studio.g.position));
+  if (Math.abs(camera.fov - studio.fov) > 0.01) { camera.fov = lerp(camera.fov, studio.fov, Math.min(1, dt * 8)); camera.updateProjectionMatrix(); }
+  // the hero turns slowly back to face you after a drag
+  studio.spin += studio.spinV * dt; studio.spinV *= Math.pow(0.02, dt);
+  if (!studioDrag.on && Math.abs(studio.spinV) < 0.05) studio.spin = lerp(studio.spin, Math.round(studio.spin / 6.283) * 6.283, Math.min(1, dt * 1.5));
+  hero.g.rotation.y = studio.spin + (studio.mode === 'select' ? 0.25 : 0);
+  // drifting embers and a living ship
+  const mp = studio.motes.geometry.attributes.position;
+  for (let i = 0; i < mp.count; i++) { let y = mp.getY(i) + dt * (0.15 + (i % 7) * 0.03); if (y > 4.5) y = 0; mp.setY(i, y); }
+  mp.needsUpdate = true;
+  if (studio.mode === 'orbit') {
+    const s = studio.ship; s.position.y = Math.sin(time * 0.6) * 0.12; s.rotation.z = Math.sin(time * 0.4) * 0.05; s.rotation.x = Math.sin(time * 0.33) * 0.03;
+    studio.plumes.forEach((p, i) => { p.scale.set(1, 0.85 + Math.sin(time * 30 + i) * 0.15, 1); });
+    studio.planet.rotation.y += dt * 0.006;
+  }
+}
+const _sv = new THREE.Vector3();
+// The hero's key and rim lights borrow the two effect lights while a menu shows her (no gameplay effects run
+// then), so the scene never gains or loses a light and no material has to recompile.
+let heroLit = false;
+function heroLights(){
+  const [a, b] = fxLights;
+  if (state === 'play' || state === 'travel' || !hero.g.visible) { if (heroLit) { a.l.intensity = b.l.intensity = 0; heroLit = false; } return; }
+  heroLit = true; hero.g.updateMatrixWorld();
+  a.l.position.set(1.4, 2.4, 2.6).applyMatrix4(hero.g.matrixWorld); a.l.color.setHex(0xffeef6); a.l.intensity = 1.0; a.l.distance = studio.mode ? 9 : 7; a.t = a.life = 1;
+  b.l.position.set(0, 1.1, 0.35).applyMatrix4(hero.g.matrixWorld); b.l.color.copy(hero.trim.emissive); b.l.intensity = 0.7; b.l.distance = 2.6; b.t = b.life = 1;
+}
+const studioDrag = { on: false, x: 0 };
+$('gMid').addEventListener('pointerdown', e => { if (e.target !== $('gMid') || studio.mode !== 'char') return; studioDrag.on = true; studioDrag.x = e.clientX; studio.spinV = 0; });
+addEventListener('pointermove', e => { if (!studioDrag.on) return; const dx = e.clientX - studioDrag.x; studioDrag.x = e.clientX; studio.spin += dx * 0.012; studio.spinV = dx * 0.6; });
+addEventListener('pointerup', () => { studioDrag.on = false; });
+
+// ---------- character slots: each class keeps its own save ----------
+function peekChar(c){
+  try { const d = JSON.parse(localStorage.getItem(charSaveKey(c)) || 'null'); if (d && d.items && d.equipped) { const eq = Object.values(d.equipped).map(u => d.items.find(i => i.uid === u)).filter(Boolean); return { power: eq.length ? Math.floor(eq.reduce((a, i) => a + i.power, 0) / eq.length) : 1000, rank: d.pass ? Math.min(60, Math.floor(d.pass.xp / 1000) + 1) : 1, sub: d.subclass, fresh: false }; } } catch (e) {}
+  return { power: 1000, rank: 1, sub: STARTER_SUB[c], fresh: true };
+}
+function switchChar(c){
+  if (c === curChar && inv) return;
+  saveInv();
+  curChar = c; try { localStorage.setItem(CHAR_KEY, c); } catch (e) {}
+  inv = loadInv();
+  for (const k in mags) delete mags[k]; for (const k in statCache) delete statCache[k];
+  subViewKey = ''; heroGunKey = ''; player.wslot = 0; player.gren = player.melee = player.clsCd = 0;
+  applyWeaponLook(); updateAbilityLabels(); renderTracker();
+}
+
+// ---------- character select ----------
+let selCur = curChar, selArmed = false;
+function openSelect(){
+  initAudio();
+  if (document.exitPointerLock && locked) document.exitPointerLock();
+  ['menu', 'orbitOv', 'pauseOv', 'gearOv', 'dirOv', 'subOv'].forEach(o => show(o, false));
+  state = 'select'; selCur = curChar; selArmed = false;
+  studioMode('select'); show('selectOv', true); renderSelect();
+}
+function renderSelect(){
+  const list = $('selList'); list.innerHTML = '';
+  CLASS_IDS.forEach((c, i) => {
+    const C = CLASSES[c], P = peekChar(c), b = el('button', 'selBan'); b.type = 'button';
+    b.style.setProperty('--cc', C.css);
+    b.setAttribute('aria-pressed', selCur === c);
+    const g = el('span', 'selGlyph'); g.innerHTML = svgIcon(GLYPH[c]);
+    const t = el('span', 'selTxt'); t.append(el('b', '', C.n), el('span', '', C.lineage + ' · ' + (SUBCLASSES[P.sub] ? SUBCLASSES[P.sub].n : 'Cinder') + (P.fresh ? ' · New' : '')));
+    const pw = el('span', 'selPow'); pw.append(el('i', '', '◆'), document.createTextNode(P.power)); pw.append(el('small', '', 'Rank ' + P.rank));
+    b.append(g, t, pw);
+    b.addEventListener('click', () => { if (selCur === c) return logIn(); pickSel(c); });
+    list.append(b);
+  });
+  const C = CLASSES[selCur];
+  $('selBlurb').textContent = C.blurb + ' Class ability: ' + C.ability.n + '. Jump: ' + C.jump.n + '.';
+  $('selReset').textContent = selArmed ? 'Tap again to erase' : 'Reset';
+  $('selectOv').style.setProperty('--cc', C.css);
+  studioTint(C.c); studioEmblem(selCur, C.css); hero.setAccent(C.c);
+}
+function pickSel(c){ selCur = c; selArmed = false; sfx.reload(); renderSelect(); }
+function logIn(){
+  switchChar(selCur); sfx.pickup(1);
+  show('selectOv', false); openOrbit();
+}
+$('selGo').addEventListener('click', logIn);
+$('selReset').addEventListener('click', () => {
+  if (!selArmed) { selArmed = true; return renderSelect(); }
+  selArmed = false;
+  try { localStorage.removeItem(charSaveKey(selCur)); } catch (e) {}
+  if (selCur === curChar) { inv = starterInventory(selCur); for (const k in mags) delete mags[k]; for (const k in statCache) delete statCache[k]; subViewKey = ''; applyWeaponLook(); updateAbilityLabels(); }
+  renderSelect();
+});
+$('selBack').addEventListener('click', () => backToTitle());
+function backToTitle(){ show('selectOv', false); studioMode(null); state = 'menu'; show('menu', true); }
+
+// ---------- orbit ----------
+let orbitBack = false;
+function openOrbit(){
+  if (document.exitPointerLock && locked) document.exitPointerLock();
+  ['menu', 'selectOv', 'pauseOv', 'gearOv', 'dirOv', 'subOv', 'deadOv'].forEach(o => show(o, false));
+  firing = false; mouseFiring = false; adsHeld = false;
+  state = 'orbit'; studioMode('orbit'); show('orbitOv', true); renderOrbit();
+}
+function renderOrbit(){
+  const C = curClass(), card = $('orbitCard'); card.innerHTML = '';
+  card.style.setProperty('--cc', C.css);
+  const g = el('span', 'selGlyph'); g.innerHTML = svgIcon(GLYPH[inv.cls]);
+  const t = el('div', 'oTxt'); t.append(el('b', '', 'Driftwalker'), el('span', '', C.n + ' · ' + sub().n));
+  const pw = el('div', 'selPow'); pw.append(el('i', '', '◆'), document.createTextNode(avgPower())); pw.append(el('small', '', 'Rank ' + passRank()));
+  card.append(g, t, pw);
+  const L = loc || LOCATIONS.tower;
+  $('orbLand').innerHTML = '<kbd>' + (pad.active ? 'Y' : 'L') + '</kbd>Land · ' + L.name;
+  studio.shipTrim.forEach(m => (m.emissive || m.color).setHex(C.c));
+}
+$('orbJourney').addEventListener('click', () => openDirector('quests'));
+$('orbDirector').addEventListener('click', () => openDirector('dest'));
+$('orbChars').addEventListener('click', openSelect);
+$('orbGear').addEventListener('click', () => openGear());
+$('orbOptions').addEventListener('click', () => openCtrl('orbit'));
+$('orbLand').addEventListener('click', () => travelTo(loc && !loc.battle ? loc.id : 'tower'));
+$('orbitBtn').addEventListener('click', openOrbit);
+
+// ---------- rewards pass: a 60-rank track paid out from XP earned anywhere ----------
+const PASS_RANKS = 60, PASS_XP = 1000;
+function passState(){ return inv.pass || (inv.pass = { xp: 0, claimed: [] }); }
+function passRank(){ return Math.min(PASS_RANKS, Math.floor(passState().xp / PASS_XP) + 1); }
+function passReward(r){
+  if (r % 10 === 0) return { tier: 4, n: 'Exotic engram' };
+  if (r % 5 === 0) return { tier: 3, n: 'Legendary engram' };
+  if (r % 3 === 0) return { tier: 2, n: 'Rare engram' };
+  return { cinders: 40 + r * 5, n: (40 + r * 5) + ' Cinders' };
+}
+function addPassXp(n){
+  const s = passState(), before = passRank();
+  s.xp = Math.min(PASS_RANKS * PASS_XP, s.xp + n);
+  if (passRank() > before) { toastText('#ffd04a', 'Rewards Pass', 'Rank ' + passRank() + ' reached', 'Claim it on the Director'); sfx.pickup(2); saveInv(); }
+}
+function claimPass(r){
+  const s = passState();
+  if (r > passRank() || s.claimed.includes(r)) return;
+  const R = passReward(r); s.claimed.push(r);
+  if (R.cinders) inv.cinders = (inv.cinders || 0) + R.cinders;
+  else { const it = rollItem(R.tier); addItem(it); toast(it.tier, it.name, 'Rewards Pass · Rank ' + r, 'Check your gear'); }
+  saveInv(); sfx.pickup(R.tier || 1);
+}
+const ENGRAM_ICON = '<path d="M50 6 L90 30 V70 L50 94 L10 70 V30Z" fill="currentColor" opacity=".25"/><path d="M50 6 L90 30 V70 L50 94 L10 70 V30Z M50 6 V94 M10 30 L90 70 M90 30 L10 70" fill="none" stroke="currentColor" stroke-width="5"/>';
+const CINDER_ICON = '<path d="M50 8 Q76 40 70 64 Q64 88 50 92 Q36 88 30 64 Q24 40 50 8Z" fill="currentColor"/><path d="M50 50 Q58 62 55 72 Q50 78 45 72 Q42 62 50 50Z" fill="#000" opacity=".4"/>';
+function renderPass(){
+  const pane = $('dirPane'); pane.innerHTML = '';
+  const s = passState(), rank = passRank(), into = rank >= PASS_RANKS ? PASS_XP : s.xp - (rank - 1) * PASS_XP;
+  const wrap = el('div', 'pass'), head = el('div', 'passHead');
+  const rb = el('div', 'passRank'); rb.append(el('div', 'lbl', 'Rank'), el('b', '', rank));
+  const info = el('div', 'passInfo');
+  info.append(el('div', 'lbl', 'Rewards Pass · Season of Embers'), el('h4', '', 'Keep the Ember lit'));
+  const bar = el('div', 'passBar'); const fill = el('i'); fill.style.width = (into / PASS_XP * 100) + '%'; bar.append(fill);
+  info.append(bar, el('div', 'lbl', rank >= PASS_RANKS ? 'Max rank' : into + ' / ' + PASS_XP + ' XP to rank ' + (rank + 1)));
+  const open = [];
+  for (let r = 1; r <= rank; r++) if (!s.claimed.includes(r)) open.push(r);
+  const all = el('button', 'btn' + (open.length ? '' : ' ghost'), open.length ? 'Claim ' + open.length : 'All claimed'); all.type = 'button'; all.disabled = !open.length;
+  all.onclick = () => { open.forEach(claimPass); renderDirector(); };
+  head.append(rb, info, all);
+  const track = el('div', 'passTrack');
+  for (let r = 1; r <= PASS_RANKS; r++) {
+    const R = passReward(r), got = s.claimed.includes(r), ready = r <= rank && !got;
+    const c = el('button', 'passCard' + (got ? ' got' : ready ? ' ready' : r > rank ? ' locked' : '') + (r % 5 === 0 ? ' big' : '')); c.type = 'button';
+    c.style.setProperty('--rc', R.tier !== undefined ? RARITY[R.tier].css : '#ffb35c');
+    const ic = el('span', 'passIc'); ic.innerHTML = svgIcon(R.tier !== undefined ? ENGRAM_ICON : CINDER_ICON);
+    c.append(el('span', 'passN', r), ic, el('span', 'passT', R.n), el('span', 'passS', got ? 'Claimed' : ready ? 'Claim' : 'Rank ' + r));
+    if (ready) c.onclick = () => { claimPass(r); renderDirector(); };
+    track.append(c);
+  }
+  const how = el('div', 'passHow');
+  [['Defeat Hollow', '+20 XP'], ['Defeat a Sentinel', '+150 XP'], ['Clear an outpost', '+300 XP'], ['Quest step', '+250 XP'], ['Complete a quest', '+800 XP'], ['Win a battle on Talos Rift', '+1500 XP']].forEach(([a, b]) => { const r = el('div'); r.append(el('span', '', a), el('b', '', b)); how.append(r); });
+  wrap.append(head, track, el('div', 'lbl', 'How to earn XP'), how);
+  pane.append(wrap);
+  requestAnimationFrame(() => { const cur = track.children[Math.max(0, rank - 2)]; if (cur) track.scrollLeft = cur.offsetLeft - track.children[0].offsetLeft - 20; });
+}
+
+// ---------- local map: the zone you are in, from above ----------
+function renderLocalMap(){
+  const pane = $('dirPane'); pane.innerHTML = '';
+  const L = loc || LOCATIONS.tower, box = el('div', 'lmap');
+  const head = el('div', 'lmapHead'); head.append(el('div', 'lbl', L.region), el('h4', '', L.name)); box.append(head);
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  const grow = (x, z, r) => { x0 = Math.min(x0, x - r); x1 = Math.max(x1, x + r); z0 = Math.min(z0, z - r); z1 = Math.max(z1, z + r); };
+  ZONE.areas.forEach(a => grow(a.x, a.z, a.r)); ZONE.paths.forEach(p => { grow(p.ax, p.az, p.w); grow(p.bx, p.bz, p.w); });
+  grow(player.pos.x, player.pos.z, 10);
+  const pad2 = (x1 - x0) * 0.06; x0 -= pad2; x1 += pad2; z0 -= pad2; z1 += pad2;
+  const ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', [x0, z0, x1 - x0, z1 - z0].map(v => v.toFixed(1)).join(' '));
+  svg.setAttribute('class', 'lmapSvg');
+  const u = (x1 - x0) / 600;   // one screen-ish pixel in world units
+  const add = (tag, at) => { const n = document.createElementNS(ns, tag); for (const k in at) n.setAttribute(k, at[k]); svg.append(n); return n; };
+  // grid
+  const step = Math.pow(10, Math.floor(Math.log10((x1 - x0) / 4)));
+  for (let x = Math.ceil(x0 / step) * step; x < x1; x += step) add('line', { x1: x, y1: z0, x2: x, y2: z1, class: 'lgrid', 'stroke-width': u });
+  for (let z = Math.ceil(z0 / step) * step; z < z1; z += step) add('line', { x1: x0, y1: z, x2: x1, y2: z, class: 'lgrid', 'stroke-width': u });
+  ZONE.paths.forEach(p => add('line', { x1: p.ax, y1: p.az, x2: p.bx, y2: p.bz, 'stroke-width': p.w, class: 'lpath' }));
+  ZONE.areas.forEach(a => add('circle', { cx: a.x, cy: a.z, r: a.r, class: 'larea', 'stroke-width': u * 1.5 }));
+  const label = (x, z, txt, cls) => { const t = add('text', { x, y: z, class: 'ltxt ' + (cls || ''), 'font-size': u * 13 }); t.textContent = txt; };
+  outposts.forEach(o => {
+    const a = o.area, s = u * 9;
+    add('path', { d: `M${a.x} ${a.z - s} L${a.x + s} ${a.z} L${a.x} ${a.z + s} L${a.x - s} ${a.z}Z`, class: 'lout' + (o.active ? ' hot' : '') });
+    if (a.name) label(a.x, a.z - s * 1.8, a.name);
+  });
+  if (L.social) npcs.forEach(n => { add('circle', { cx: n.def.pos[0], cy: n.def.pos[2], r: u * 5, class: 'lnpc' }); label(n.def.pos[0], n.def.pos[2] - u * 10, n.def.name, 'npc'); });
+  enemies.forEach(e => { if (!e.dead && e.aware !== undefined && e.type !== 'rival') add('circle', { cx: e.pos.x, cy: e.pos.z, r: u * 3, class: 'lfoe' }); });
+  const yaw = player.yaw, s = u * 12, fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = -fz, rz = fx, P = player.pos;
+  add('path', { d: `M${P.x + fx * s} ${P.z + fz * s} L${P.x - fx * s * 0.6 + rx * s * 0.6} ${P.z - fz * s * 0.6 + rz * s * 0.6} L${P.x - fx * s * 0.25} ${P.z - fz * s * 0.25} L${P.x - fx * s * 0.6 - rx * s * 0.6} ${P.z - fz * s * 0.6 - rz * s * 0.6}Z`, class: 'lme' });
+  box.append(svg);
+  const leg = el('div', 'lmapLeg');
+  [['lme', 'You'], ['lout', 'Outpost'], ['lout hot', 'Outpost under attack'], ['lfoe', 'Hollow'], ['lnpc', 'Person']].forEach(([c, t]) => { const r = el('span'); r.append(el('i', c), document.createTextNode(t)); leg.append(r); });
+  box.append(leg);
+  pane.append(box);
+}
+
+// ---------- destinations: the activity row under the system map ----------
+const HEX_ICON = {
+  tower: '<path d="M20 86 V46 L34 36 V20 L42 14 L50 20 V36 L58 30 L66 36 V52 L80 60 V86Z" fill="currentColor"/>',
+  patrol: '<circle cx="50" cy="50" r="34" fill="none" stroke="currentColor" stroke-width="7"/><path d="M50 18 L60 50 L50 82 L40 50Z" fill="currentColor"/>',
+  battle: '<path d="M50 8 L58 40 L92 56 V64 L58 58 L56 80 L68 88 V94 L50 90 L32 94 V88 L44 80 L42 58 L8 64 V56 L42 40Z" fill="currentColor"/>',
+  quests: '<path d="M50 6 L94 50 L50 94 L6 50Z" fill="none" stroke="currentColor" stroke-width="7"/><path d="M44 28 H56 V58 H44Z M44 64 H56 V76 H44Z" fill="currentColor"/>',
+  pass: '<path d="M18 14 H82 V86 L50 68 L18 86Z" fill="none" stroke="currentColor" stroke-width="7"/><path d="M50 26 L56 40 L72 41 L60 51 L64 66 L50 58 L36 66 L40 51 L28 41 L44 40Z" fill="currentColor"/>',
+  crown: '<path d="M12 78 L18 30 L36 52 L50 18 L64 52 L82 30 L88 78Z" fill="currentColor"/>'
+};
+const PATROLS = ['steppe', 'veyra', 'kharun'];
+function hexRow(){
+  const row = el('div', 'hexRow');
+  const hex = (id, label, sel, fn, cls) => {
+    const b = el('button', 'hex' + (sel ? ' sel' : '') + (cls ? ' ' + cls : '')); b.type = 'button';
+    const h = el('span', 'hexIc'); h.innerHTML = svgIcon(HEX_ICON[id]);
+    b.append(h, el('span', 'hexL', label)); b.onclick = () => { fn(); sfx.reload(); }; row.append(b);
+  };
+  hex('tower', 'Emberhold', dirSel === 'tower', () => { dirSel = 'tower'; renderDirector(); });
+  hex('patrol', 'Patrol', PATROLS.includes(dirSel), () => { const i = PATROLS.indexOf(dirSel); dirSel = PATROLS[(i + 1) % PATROLS.length]; renderDirector(); });
+  hex('battle', 'Battle', dirSel === 'rift', () => { dirSel = 'rift'; renderDirector(); }, 'pvp');
+  hex('quests', 'Quests', false, () => { dirTab = 'quests'; renderDirector(); });
+  hex('pass', 'Pass', false, () => { dirTab = 'pass'; renderDirector(); }, openPassRewards() ? 'hot' : '');
+  hex('crown', 'Expansion', dirSel === 'crown', () => { dirSel = 'crown'; renderDirector(); }, 'exp');
+  return row;
+}
+function openPassRewards(){ const s = passState(), r = passRank(); for (let i = 1; i <= r; i++) if (!s.claimed.includes(i)) return true; return false; }
+
+// ---------- character screen: subclass and weapons on the left, the hero in the middle, armor and stats on the right ----------
+let gearDrawer = false;
+function renderCharScreen(L, M, R){
+  const S = sub(), E = ELEMENTS[S.element];
+  // left: subclass diamond and the three weapons
+  const sb = el('button', 'csub'); sb.type = 'button'; sb.style.setProperty('--ec', E.css);
+  const d = el('span', 'csubD'); d.innerHTML = svgIcon(GLYPH[S.element]);
+  const st = el('span', 'csubT'); st.append(el('span', 'lbl', 'Subclass'), el('b', '', S.n), el('span', '', curClass().n + ' · ' + E.n));
+  sb.append(d, st); sb.onclick = () => { openSub(); };
+  L.append(sb);
+  L.append(el('div', 'lbl chead', 'Weapons'));
+  WSLOTS.forEach((slot, i) => {
+    const it = equippedIn(slot); if (!it) return;
+    const t = el('button', 'cwep'); t.type = 'button';
+    t.style.setProperty('--rc', RARITY[it.tier].css); t.style.setProperty('--ec', ELEMENTS[it.element].css);
+    const ic = el('span', 'cwIc'); ic.innerHTML = weaponIcon(it.arch);
+    const tx = el('span', 'cwT'); tx.append(el('b', '', it.name), el('span', '', ARCH[it.arch].n));
+    const pw = el('span', 'cwP'); pw.append(el('i', 'edot'), document.createTextNode(it.power));
+    t.append(ic, tx, pw);
+    const spare = inv.items.filter(x => x.slot === slot && x.uid !== it.uid).length;
+    if (spare) t.append(el('span', 'gcount', spare));
+    t.setAttribute('aria-pressed', gearDrawer && gearSel === slot);
+    if (player.wslot === i) t.classList.add('held');
+    t.onclick = () => { openDrawer(slot, it); if (player.wslot !== i) { player.wslot = i; applyWeaponLook(); refreshHeroGun(); } };
+    L.append(t);
+  });
+  // right: power, armor and stats
+  const pw = el('div', 'cpow'); pw.append(el('span', 'lbl', 'Power'), el('b', '', '◆ ' + avgPower())); R.append(pw);
+  const ar = el('div', 'carmor');
+  ASLOTS.forEach(slot => {
+    const it = equippedIn(slot); if (!it) return;
+    const t = el('button', 'carm'); t.type = 'button'; t.style.setProperty('--rc', RARITY[it.tier].css);
+    const ic = el('span', 'caIc'); ic.innerHTML = armorIcon(slot);
+    const tx = el('span', 'caT'); tx.append(el('b', '', it.name), el('span', '', SLOT_NAMES[slot] + ' · ' + it.power));
+    t.append(ic, tx);
+    const spare = inv.items.filter(x => x.slot === slot && x.uid !== it.uid).length;
+    if (spare) t.append(el('span', 'gcount', spare));
+    t.setAttribute('aria-pressed', gearDrawer && gearSel === slot);
+    t.onclick = () => openDrawer(slot, it);
+    ar.append(t);
+  });
+  R.append(ar);
+  R.append(el('div', 'lbl chead', 'Stats'));
+  const sts = el('div', 'cstats');
+  STATS.forEach(s => {
+    const v = armorStat(s.id), r = el('div', 'cstat'); r.title = s.d;
+    const ic = el('span', 'csIc'); ic.innerHTML = statIcon(s.id);
+    const bar = el('i'); bar.style.setProperty('--v', Math.min(100, v / 70 * 100) + '%');
+    r.append(ic, el('span', '', s.n), bar, el('b', '', v)); sts.append(r);
+  });
+  R.append(sts);
+  // middle: the hero, or the drawer for the chosen slot
+  if (!gearDrawer) { M.append(el('div', 'chint lbl', isTouch ? 'Drag to turn' : 'Drag to turn · I to close')); return; }
+  const dr = el('div', 'cdrawer');
+  const eq = equippedIn(gearSel), mine = inv.items.filter(i => i.slot === gearSel), stored = inv.vault.filter(i => i.slot === gearSel).length;
+  const head = el('div', 'gmidhead');
+  head.append(el('div', 'lbl', SLOT_NAMES[gearSel] + ' · ' + (mine.length - 1) + ' / ' + SLOT_CAP + ' spare'));
+  if (stored) { const vb = el('button', 'btn ghost small', stored + ' in vault'); vb.type = 'button'; vb.onclick = () => { gearTab = 'vault'; Object.assign(vf, { kind: WSLOTS.includes(gearSel) ? 'weapon' : 'armor', slot: gearSel, arch: 'all', element: 'all', tier: 'all', where: 'vault' }); saveVf(); renderGear(); }; head.append(vb); }
+  const x = el('button', 'btn ghost small', 'Close'); x.type = 'button'; x.onclick = () => { gearDrawer = false; renderGear(); }; head.append(x);
+  dr.append(head);
+  const list = el('div', 'glist');
+  mine.sort((a, b) => (b === eq) - (a === eq) || b.power - a.power || b.tier - a.tier).forEach(it => list.append(itemTile(it, it === eq ? 'Equipped' : RARITY[it.tier].n)));
+  dr.append(list);
+  if (gearItem && (inv.items.includes(gearItem) || inVault(gearItem))) dr.append(detailCard(gearItem, eq));
+  M.append(dr);
+}
+function openDrawer(slot, it){ gearSel = slot; gearItem = it; gearMsg = ''; gearDrawer = true; sfx.reload(); renderGear(); }
+
+// ---------- subclass screen ----------
+let subFocus = null, subFocusKey = '';
+const subKey = o => o.kind + '|' + (o.k || o.n);
+function openSub(){ show('subOv', true); subFocusKey = ''; sfx.reload(); renderSub(); }
+function closeSub(){ show('subOv', false); renderGear(); }
+function renderSub(){
+  const id = sub().id, S = SUBCLASSES[id], Ld = loadoutOf(id), E = ELEMENTS[S.element], C = curClass();
+  const ov = $('subOv'); ov.style.setProperty('--ec', E.css);
+  $('subBg').innerHTML = svgIcon(GLYPH[S.element]);
+  $('subGlyph').innerHTML = svgIcon(GLYPH[S.element]);
+  $('subTitle').textContent = S.n; $('subKind').textContent = C.n + ' subclass · ' + E.n;
+  const sw = $('subSwitch'); sw.innerHTML = '';
+  Object.keys(SUBCLASSES).forEach(k => {
+    const b = el('button', 'chip', SUBCLASSES[k].n); b.type = 'button'; b.style.setProperty('--cc', ELEMENTS[SUBCLASSES[k].element].css);
+    b.setAttribute('aria-pressed', k === id);
+    b.onclick = () => { if (k === id) return; inv.subclass = k; saveInv(); player.gren = player.melee = 0; subFocusKey = ''; updateAbilityLabels(); sfx.pickup(1); renderSub(); };
+    sw.append(b);
+  });
+  const G = $('subGroups'); G.innerHTML = ''; subFocus = null;
+  const focus = (o) => { subFocus = o; subFocusKey = subKey(o); renderInfo(); };
+  const opt = (o) => {
+    if (subKey(o) === subFocusKey) subFocus = o;
+    const b = el('button', 'sopt' + (o.big ? ' big' : '') + (o.fixed ? ' fixed' : '')); b.type = 'button';
+    b.innerHTML = abilityIcon(o.icon, o.v);
+    b.setAttribute('aria-pressed', !!o.on); b.setAttribute('aria-label', o.n);
+    b.addEventListener('pointerenter', () => focus(o)); b.addEventListener('focus', () => focus(o));
+    b.onclick = () => { if (o.pick) { o.pick(); saveInv(); subViewKey = ''; updateAbilityLabels(); sfx.reload(); } subFocusKey = subKey(o); renderSub(); };
+    return b;
+  };
+  const group = (title, count, rows, wide) => {
+    const g = el('div', 'sgroup sg-' + title.toLowerCase() + (wide ? ' wide' : '')); const h = el('div', 'sghead'); h.append(el('span', '', title)); if (count) h.append(el('b', '', count)); g.append(h);
+    const rs = el('div', 'srows');
+    rows.forEach(([lbl, opts]) => { const r = el('div', 'srow'); if (lbl) r.append(el('span', 'lbl', lbl)); const os = el('div', 'sopts'); opts.forEach(o => os.append(opt(o))); r.append(os); rs.append(r); });
+    g.append(rs); G.append(g);
+  };
+  const list = (tbl, kind, cur, set, icon) => Object.keys(tbl).map((k, i) => ({ k, kind, n: tbl[k].n, d: tbl[k].d, icon, v: i + 1, on: cur === k, pick: () => set(k), cd: tbl[k].cd }));
+  const supers = list(S.supers, 'Super', Ld.super, k => Ld.super = k, 'super').map(o => Object.assign(o, { big: true }));
+  group('Super', '', [['', supers]]);
+  group('Abilities', '', [
+    ['Class', [{ kind: 'Class ability', n: C.ability.n, d: C.ability.d, icon: C.ability.id, on: true, fixed: true, cd: C.ability.cd }]],
+    ['Jump', [{ kind: 'Jump', n: C.jump.n, d: C.jump.d, icon: C.jump.id, on: true, fixed: true }]],
+    ['Melee', list(S.melees, 'Melee', Ld.melee, k => Ld.melee = k, 'melee')],
+    ['Grenade', list(S.grenades, 'Grenade', Ld.grenade, k => Ld.grenade = k, 'grenade')]
+  ], true);
+  const asp = Object.keys(S.aspects).map((k, i) => ({ k, kind: 'Aspect', n: S.aspects[k].n, d: S.aspects[k].d, icon: 'aspect', v: i + 1, on: Ld.aspects.includes(k),
+    pick: () => { const a = Ld.aspects; if (a.includes(k)) { if (a.length > 1) a.splice(a.indexOf(k), 1); } else { if (a.length >= 2) a.shift(); a.push(k); } } }));
+  group('Aspects', Ld.aspects.length + ' / 2', [['', asp]]);
+  const sh = Object.keys(S.shards).map((k, i) => ({ k, kind: 'Shard', n: S.shards[k].n, d: S.shards[k].d, icon: 'shard', v: i + 1, on: Ld.shards.includes(k),
+    pick: () => { const a = Ld.shards; if (a.includes(k)) a.splice(a.indexOf(k), 1); else { if (a.length >= SHARD_SLOTS) a.shift(); a.push(k); } } }));
+  group('Shards', Ld.shards.length + ' / ' + SHARD_SLOTS, [['', sh]]);
+  if (!subFocus) subFocus = supers.find(o => o.on);
+  renderInfo();
+  const ss = $('subStats'); ss.innerHTML = '';
+  const eff = { agility: v => '+' + Math.round(v * 0.4) + '% move speed', fortitude: v => '−' + Math.round(v * 0.4) + '% damage taken', recovery: v => Math.max(1.6, 3.4 - v * 0.02).toFixed(1) + ' s to start healing',
+    ordnance: v => grenCd().toFixed(1) + ' s grenade', might: v => meleeCd().toFixed(1) + ' s melee', focus: v => '+' + v + '% super charge' };
+  STATS.forEach(s => { const v = armorStat(s.id), r = el('div', 'sstat'); const ic = el('span', 'csIc'); ic.innerHTML = statIcon(s.id); r.append(ic, el('b', '', v), el('span', 'lbl', s.n), el('span', 'sse', eff[s.id](v))); ss.append(r); });
+}
+function renderInfo(){
+  const o = subFocus, I = $('subInfo'); I.innerHTML = ''; if (!o) return;
+  I.append(el('div', 'lbl', o.kind), el('h3', '', o.n), el('p', '', o.d));
+  if (o.cd) I.append(el('div', 'lbl', 'Cooldown ' + o.cd + ' s'));
+  I.append(el('div', 'sstate' + (o.on ? ' on' : ''), o.fixed ? 'Always on for your class' : o.on ? 'Equipped' : isTouch ? 'Tap to equip' : 'Click to equip'));
+}
+$('subClose').addEventListener('click', closeSub);
+
+function dirTabCycle(step){ const T = ['store', 'pass', 'quests', 'map', 'dest']; dirTab = T[(T.indexOf(dirTab) + step + T.length) % T.length]; renderDirector(); sfx.reload(); }
 
 // ---------- battle troopers: rival and allied Driftwalkers on the battle world ----------
 // A full jointed soldier (hips, spine, chest, neck, two-bone arms and legs) driven by a procedural animator:
@@ -4316,7 +5444,7 @@ function battleScore(team, n){
   if (BATTLE.score[team] >= BATTLE.goal) {
     const won = team === 'ember';
     banner(won ? 'Victory' : 'Defeat', won ? 'The field is ours' : 'The Rivals hold the field', won ? 'Rewards dropped at your feet' : 'Regroup. The next round starts now');
-    if (won) { dropLoot(player.pos.clone().setY(0), 2); dropLoot(player.pos.clone().setY(0), 1); inv.cinders = (inv.cinders || 0) + 40; saveInv(); }
+    if (won) { dropLoot(player.pos.clone().setY(0), 2); dropLoot(player.pos.clone().setY(0), 1); inv.cinders = (inv.cinders || 0) + 40; addPassXp(1500); saveInv(); }
     BATTLE.score.ember = BATTLE.score.rival = 0; renderScore();
   }
 }
@@ -4864,7 +5992,8 @@ function travelTo(id){
   const def = LOCATIONS[id]; if (!def || !ownsPack(def.pack) || state === 'travel') return;
   initAudio(); requestLock();
   state = 'travel'; firing = false; mouseFiring = false; adsHeld = false;
-  ['dirOv', 'pauseOv', 'deadOv', 'menu', 'talkOv', 'gearOv'].forEach(o => show(o, false)); show('touch', false);
+  ['dirOv', 'pauseOv', 'deadOv', 'menu', 'talkOv', 'gearOv', 'selectOv', 'orbitOv', 'subOv'].forEach(o => show(o, false)); show('touch', false);
+  studioMode(null); $('gearOv').classList.remove('studio');
   $('loadName').textContent = def.name; $('loadSub').textContent = def.region;
   $('loadOv').classList.add('on');
   setTimeout(() => {
@@ -4904,7 +6033,11 @@ renderTracker();
 // ---------- input: desktop ----------
 addEventListener('keydown', e => {
   keys[e.code] = true;
-  if (state === 'gear' && (e.code === 'Escape' || e.code === 'KeyI' || e.code === 'Tab')) { e.preventDefault(); closeGear(); return; }
+  if (state === 'gear' && (e.code === 'Escape' || e.code === 'KeyI' || e.code === 'Tab')) {
+    e.preventDefault();
+    if (!$('subOv').hidden) closeSub(); else if (gearDrawer && e.code === 'Escape') { gearDrawer = false; renderGear(); } else closeGear();
+    return;
+  }
   if (state === 'deploy') {
     if (e.code === 'Digit1') chooseDeploy(0); else if (e.code === 'Digit2') chooseDeploy(1);
     else if (/Arrow(Left|Right|Up|Down)|Key[AD]/.test(e.code)) { deploySel = 1 - deploySel; markDeploy(); }
@@ -4913,10 +6046,27 @@ addEventListener('keydown', e => {
   }
   if (state === 'director') {
     if (e.code === 'Escape' || e.code === 'KeyM') closeDirector();
-    else if (dirTab === 'map' && (e.code === 'ArrowRight' || e.code === 'ArrowDown' || e.code === 'KeyD')) dirCycle(1);
-    else if (dirTab === 'map' && (e.code === 'ArrowLeft' || e.code === 'ArrowUp' || e.code === 'KeyA')) dirCycle(-1);
-    else if (dirTab === 'map' && (e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); launchSel(); }
+    else if (dirTab === 'dest' && (e.code === 'ArrowRight' || e.code === 'ArrowDown' || e.code === 'KeyD')) dirCycle(1);
+    else if (dirTab === 'dest' && (e.code === 'ArrowLeft' || e.code === 'ArrowUp' || e.code === 'KeyA')) dirCycle(-1);
+    else if (dirTab === 'dest' && (e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); launchSel(); }
     else if (e.code === 'KeyQ') dirTabCycle(-1); else if (e.code === 'KeyE') dirTabCycle(1);
+    return;
+  }
+  if (state === 'select') {
+    if (e.code === 'ArrowDown' || e.code === 'KeyS') pickSel(CLASS_IDS[(CLASS_IDS.indexOf(selCur) + 1) % 3]);
+    else if (e.code === 'ArrowUp' || e.code === 'KeyW') pickSel(CLASS_IDS[(CLASS_IDS.indexOf(selCur) + 2) % 3]);
+    else if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); logIn(); }
+    else if (e.code === 'Escape') backToTitle();
+    return;
+  }
+  if (state === 'orbit') {
+    if (!$('ctrlOv').hidden) return;
+    if (e.code === 'Enter' || e.code === 'KeyM') openDirector('dest');
+    else if (e.code === 'KeyJ') openDirector('quests');
+    else if (e.code === 'KeyI' || e.code === 'Tab') { e.preventDefault(); openGear(); }
+    else if (e.code === 'KeyL') travelTo(loc && !loc.battle ? loc.id : 'tower');
+    else if (e.code === 'KeyO') openCtrl('orbit');
+    else if (e.code === 'Escape') openSelect();
     return;
   }
   if (state === 'talk') {
@@ -4943,7 +6093,8 @@ addEventListener('keydown', e => {
   if (e.code === 'Space') { e.preventDefault(); jump(); }
   if (e.code === 'KeyR') startReload();
   if (e.code === 'KeyQ') throwGrenade();
-  if (e.code === 'KeyE' || e.code === 'KeyV') meleeStrike();
+  if (e.code === 'KeyE') meleeStrike();
+  if (e.code === 'KeyV') castClass();
   if (e.code === 'KeyF') castSuper();
   if (e.code === 'KeyP') pause();
   if (e.code === 'KeyC' || e.code === 'ControlLeft') slide();
@@ -4985,7 +6136,7 @@ function slide(){
 function jump(){
   if (player.slideT > 0) player.slideT = 0;
   if (player.onGround) { player.vel.y = 9.5; player.onGround = false; sfx.jump(); }
-  else if (!player.lifted) { player.vel.y = Math.max(player.vel.y, 0) + 8.5; player.lifted = true; sfx.jump(); burst(player.pos.clone(), 0x7fd8ff, 8, 3); }
+  else airJump();
 }
 
 // ---------- input: touch ----------
@@ -5044,7 +6195,7 @@ for (const [id, key] of [['tThrUp', 'thrUp'], ['tThrDn', 'thrDn'], ['tBoost', 'b
   b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); flight[key] = true; b.classList.add('on'); });
   for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(ev, () => { flight[key] = false; b.classList.remove('on'); });
 }
-tbtn('tJump', jump); tbtn('tGren', throwGrenade); tbtn('tMelee', meleeStrike); tbtn('tSuper', castSuper); tbtn('tReload', startReload);
+tbtn('tJump', jump); tbtn('tGren', throwGrenade); tbtn('tMelee', meleeStrike); tbtn('tSuper', castSuper); tbtn('tClass', castClass); tbtn('tReload', startReload);
 tbtn('tPause', () => { pause(); show('touch', false); });
 $('resume').addEventListener('click', () => show('touch', isTouch));
 function renderInvFlight(){ $('invFlight').textContent = flight.invert ? 'Flight: push to climb' : 'Flight: push to dive'; }
@@ -5067,6 +6218,7 @@ const ACTIONS = [
   { id: 'slide',   label: 'Crouch / slide' },
   { id: 'grenade', label: 'Grenade' },
   { id: 'melee',   label: 'Melee' },
+  { id: 'classAb', label: 'Class ability' },
   { id: 'sprint',  label: 'Sprint' },
   { id: 'pause',   label: 'Pause' },
   { id: 'swap',    label: 'Swap weapon' },
@@ -5079,7 +6231,7 @@ const STICKS = [
 ];
 const DEFAULT_BINDS = {
   fire: { t: 'b', i: 7 }, ads: { t: 'b', i: 6 }, jump: { t: 'b', i: 0 }, reload: { t: 'b', i: 2 },
-  slide: { t: 'b', i: 1 }, grenade: { t: 'b', i: 4 }, melee: { t: 'b', i: 5 }, sprint: { t: 'b', i: 10 }, pause: { t: 'b', i: 9 }, swap: { t: 'b', i: 3 }, gear: { t: 'b', i: 8 }, map: { t: 'b', i: 12 },
+  slide: { t: 'b', i: 1 }, grenade: { t: 'b', i: 4 }, melee: { t: 'b', i: 5 }, classAb: { t: 'b', i: 13 }, sprint: { t: 'b', i: 10 }, pause: { t: 'b', i: 9 }, swap: { t: 'b', i: 3 }, gear: { t: 'b', i: 8 }, map: { t: 'b', i: 12 },
   moveX: { i: 0, s: 1 }, moveY: { i: 1, s: 1 }, lookX: { i: 2, s: 1 }, lookY: { i: 3, s: 1 }
 };
 let binds = JSON.parse(JSON.stringify(DEFAULT_BINDS)), customBinds = false;
@@ -5198,11 +6350,11 @@ function updateTester(g){
 }
 let ctrlReturn = 'menu';
 function openCtrl(from){
-  ctrlReturn = from; show('menu', false); show('pauseOv', false); show('ctrlOv', true);
+  ctrlReturn = from; show('menu', false); show('pauseOv', false); show('orbitOv', false); show('ctrlOv', true);
   $('ctrlPrompt').textContent = 'Press buttons to check them. If anything is wrong, choose Remap.'; $('ctrlSkip').hidden = true;
   renderBinds();
 }
-function closeCtrl(){ pad.capture = null; show('ctrlOv', false); show(ctrlReturn === 'pause' ? 'pauseOv' : 'menu', true); }
+function closeCtrl(){ pad.capture = null; show('ctrlOv', false); show(ctrlReturn === 'pause' ? 'pauseOv' : ctrlReturn === 'orbit' ? 'orbitOv' : 'menu', true); }
 $('ctrlOpen').addEventListener('click', () => openCtrl('menu'));
 $('ctrlOpen2').addEventListener('click', () => openCtrl('pause'));
 // controller input can be switched off entirely (setup screen still reads the pad so it can be tested)
@@ -5236,6 +6388,16 @@ function pollPad(dt){
   const tap = id => cur[id] && !pad.prev[id];
   if (!$('ctrlOv').hidden) { pad.prev = cur; return; }
   if (state === 'menu' && tap('jump')) startGame();
+  else if (state === 'select') {
+    const ny = (g.buttons[13] && g.buttons[13].pressed ? 1 : 0) - (g.buttons[12] && g.buttons[12].pressed ? 1 : 0) || Math.round(stick(axisVal(g, binds.moveY.i) * binds.moveY.s));
+    if (ny && ny !== pad.nav) pickSel(CLASS_IDS[(CLASS_IDS.indexOf(selCur) + ny + 3) % 3]);
+    pad.nav = ny;
+    if (tap('jump')) logIn(); else if (tap('slide')) backToTitle();
+  }
+  else if (state === 'orbit') {
+    if (tap('jump') || tap('map')) openDirector('dest'); else if (tap('reload')) openDirector('quests'); else if (tap('swap')) travelTo(loc && !loc.battle ? loc.id : 'tower');
+    else if (tap('gear')) openGear(); else if (tap('slide')) openSelect();
+  }
   else if (state === 'dead' && tap('jump')) respawnHere();
   else if (state === 'deploy') {
     const nx = (g.buttons[15] && g.buttons[15].pressed ? 1 : 0) - (g.buttons[14] && g.buttons[14].pressed ? 1 : 0) || Math.round(stick(axisVal(g, binds.moveX.i) * binds.moveX.s));
@@ -5244,13 +6406,13 @@ function pollPad(dt){
     if (tap('jump')) chooseDeploy(deploySel);
   }
   else if (state === 'pause' && (tap('pause') || tap('jump'))) { resume(); show('touch', isTouch); }
-  else if (state === 'gear' && (tap('gear') || tap('slide') || tap('pause'))) closeGear();
+  else if (state === 'gear' && (tap('gear') || tap('slide') || tap('pause'))) { if (!$('subOv').hidden) closeSub(); else if (gearDrawer) { gearDrawer = false; renderGear(); } else closeGear(); }
   else if (state === 'director') {
     const nx = (g.buttons[15] && g.buttons[15].pressed ? 1 : 0) - (g.buttons[14] && g.buttons[14].pressed ? 1 : 0) || Math.round(stick(axisVal(g, binds.moveX.i) * binds.moveX.s));
-    if (nx && nx !== pad.nav) dirCycle(nx);
+    if (nx && nx !== pad.nav && dirTab === 'dest') dirCycle(nx);
     pad.nav = nx;
     if (tap('slide') || tap('pause') || tap('map')) closeDirector();
-    else if (tap('jump') && dirTab === 'map') launchSel();
+    else if (tap('jump') && dirTab === 'dest') launchSel();
     else if (tap('grenade')) dirTabCycle(-1); else if (tap('melee')) dirTabCycle(1);
   }
   else if (state === 'talk') {
@@ -5300,6 +6462,7 @@ function pollPad(dt){
       if (pendingMelee > 0) { pendingMelee -= dt; if (cur.melee && cur.grenade) { pendingGren = pendingMelee = 0; castSuper(); } else if (pendingMelee <= 0) meleeStrike(); }
       if (tap('pause')) pause();
       if (tap('swap')) swapWeapon();
+      if (tap('classAb')) castClass();
       if (tap('gear')) openGear();
       if (tap('map')) openDirector();
       if (tap('reload') && loc && loc.social) interact();
@@ -5363,6 +6526,7 @@ function updatePlayer(dt){
   else { player.vel.x = lerp(player.vel.x, tx, Math.min(1, acc * dt)); player.vel.z = lerp(player.vel.z, tz, Math.min(1, acc * dt)); }
   player.crouch = lerp(player.crouch, player.slideT > 0 ? 1 : 0, Math.min(1, dt * 12));
   player.vel.y -= 26 * dt;
+  if (player.glide && player.vel.y < -2.2) player.vel.y = -2.2;   // Seer glide
   // punched out: free fall, then the chute slows you near the ground
   if (player.eject) {
     player.vel.y = Math.max(player.vel.y, player.pos.y > 60 ? -45 : -12);
@@ -5371,12 +6535,12 @@ function updatePlayer(dt){
     if (!out && player.pos.y < 0.5) player.eject = false;
   }
   player.pos.addScaledVector(player.vel, dt);
-  if (player.pos.y <= 0) { if (!player.onGround && player.vel.y < -12) shake = Math.max(shake, 0.15); player.pos.y = 0; player.vel.y = 0; player.onGround = true; player.lifted = false; }
+  if (player.pos.y <= 0) { if (!player.onGround && player.vel.y < -12) shake = Math.max(shake, 0.15); player.pos.y = 0; player.vel.y = 0; player.onGround = true; player.lifted = false; player.airJumps = 0; player.glide = false; }
   collide(player.pos, 0.45);
   const moveAmt = Math.hypot(player.vel.x, player.vel.z);
   if (player.onGround) bob += dt * moveAmt * 1.25;
   // timers
-  player.gren = Math.max(0, player.gren - dt); player.melee = Math.max(0, player.melee - dt);
+  player.gren = Math.max(0, player.gren - dt); player.melee = Math.max(0, player.melee - dt); player.clsCd = Math.max(0, player.clsCd - dt);
   addSuper(dt * 0.9); tickBuffs(dt);
   if (!loc || !loc.social) updateWeapon(dt);
   if (time - player.lastHurt > regenDelay() && player.hp < 100) player.hp = Math.min(100, player.hp + (45 + armorStat('recovery') * 0.8) * dt);
@@ -5487,7 +6651,7 @@ function updateOutposts(dt){
     if (o.active && !alive) {
       o.active = false; o.cooldown = 90;
       wisp(`${a.name} is clear. That should thin them out for a while.`);
-      dropLoot(new THREE.Vector3(a.x, 0, a.z), 2); questEvent('outpost', 1);
+      dropLoot(new THREE.Vector3(a.x, 0, a.z), 2); questEvent('outpost', 1); addPassXp(300);
     }
     if (!o.active && d > a.r + 70) o.cooldown -= dt;
     if (!o.active && o.cooldown <= 0 && d < a.r + 75) {
@@ -5517,6 +6681,7 @@ function updateFx(dt){
   flashT -= dt; flash.visible = flashT > 0; flashLight.intensity = Math.max(0, flashLight.intensity - dt * 60);
 }
 function updateCamera(dt){
+  if (studio.mode) { studioCamera(dt); return; }
   if (state === 'menu') {
     // slow hero shot around the player model
     const a = Math.sin(time * 0.15) * 0.8 + 0.25, wide = innerWidth > innerHeight * 1.2;
@@ -5565,6 +6730,8 @@ function updateHud(dt){
   const gf = player.gren / player.grenMax, mf = player.melee / player.meleeMax;
   $('abGren').querySelector('.fill').style.height = (100 - gf * 100) + '%'; $('abGren').classList.toggle('ready', gf === 0);
   $('abMelee').querySelector('.fill').style.height = (100 - mf * 100) + '%'; $('abMelee').classList.toggle('ready', mf === 0);
+  const cf = player.clsCd / player.clsMax;
+  $('abClass').querySelector('.fill').style.height = (100 - cf * 100) + '%'; $('abClass').classList.toggle('ready', cf <= 0); $('tClass').classList.toggle('cd', cf > 0);
   const v = $('vignette'); v.style.opacity = Math.max(+v.style.opacity - dt * 1.6, player.hp < 35 ? 0.45 : 0);
   if (bossRef && !bossRef.dead) {
     show('boss', true);
@@ -5595,7 +6762,7 @@ function frame(now){
   if (state === 'play') touchAssist(dt);
   if (state === 'play') {
     if (player.jet) updateFlight(dt); else updatePlayer(dt);
-    updateEnemies(dt); updateProjectiles(dt);
+    updateEnemies(dt); updateProjectiles(dt); tickAbilityFx(dt);
     if (loc && loc.battle) updateBattle(dt); else if (loc && loc.combat) updateWaves(dt);
     updateHud(dt); updateInteract(); if (player.jet) updateFlightHud();
   }
@@ -5604,7 +6771,7 @@ function frame(now){
   if (state === 'talk') talkCam(dt);
   talkZoom = lerp(talkZoom, state === 'talk' ? 1 : 0, Math.min(1, dt * 4));
   updateFx(dt);
-  updateCamera(dt); followSun();
+  updateCamera(dt); followSun(); heroLights();
   if (composer) composer.render(); else renderer.render(scene, camera);
 }
 requestAnimationFrame(frame);
