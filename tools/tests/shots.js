@@ -188,8 +188,9 @@ const ROOT = path.resolve(__dirname, '..', '..'), THREE_DIR = process.argv[2], O
     await p.click('#play'); await p.waitForTimeout(1500);
     console.log('after play', await st(), await p.evaluate(() => JSON.stringify({ studio: __t.studio.mode, hero: __t.hero.g.visible, sel: !document.getElementById('selectOv').hidden })));
     await shot('select');
-    await p.keyboard.press('ArrowDown'); await p.waitForTimeout(900); await shot('select2');
-    await p.keyboard.press('ArrowDown'); await p.waitForTimeout(900); await shot('select3');
+    // step through every class with the Down arrow, one picture each, until it wraps back round to the Outrider
+    const classes = await p.evaluate(() => document.querySelectorAll('#selList .selBan').length);
+    for (let k = 2; k <= classes; k++) { await p.keyboard.press('ArrowDown'); await p.waitForTimeout(900); await shot('select' + k); }
     await p.keyboard.press('ArrowDown'); await p.waitForTimeout(300);
     await p.keyboard.press('Enter'); await p.waitForTimeout(1500);
     console.log('after login', await st(), await p.evaluate(() => JSON.stringify({ cls: __t.inv.cls, sub: __t.inv.subclass, studio: __t.studio.mode })));

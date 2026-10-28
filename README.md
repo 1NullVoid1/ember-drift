@@ -7,7 +7,7 @@ An original sci-fi looter shooter that runs in the browser, built mobile-first w
 ![Director](screenshots/director.png)
 
 ## What's in it
-- Three classes (Seer, Outrider and Bulwark), each with its own save, picked from a character select screen
+- Four classes (Seer, Outrider, Bulwark and Screeb), each with its own save, picked from a character select screen
 - An orbit screen, a character screen where your character shows off her equipped gun, and a subclass screen for supers, abilities, aspects and shards
 - **Emberhold**, a social hub where you talk to Commander Rho Kestrel, Tessa Morrow the gunsmith and Old Fen the archivist
 - **The Director**, a galaxy map for travelling to the Shattered Steppe, Frostfall Reach and Kharun Deep, with tabs for the rewards pass, a local map, quests and the store

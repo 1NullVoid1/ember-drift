@@ -425,7 +425,9 @@ body.social #tTalk.on{display:flex}
 .selHead{position:absolute;top:calc(22px + env(safe-area-inset-top,0px));left:calc(26px + env(safe-area-inset-left,0px));display:grid;gap:6px}
 .selName{font:700 clamp(30px,4.4vw,52px)/.9 var(--display);letter-spacing:.06em;text-transform:uppercase}
 .selClan{font:600 12px/1 var(--display);letter-spacing:.28em;text-transform:uppercase;color:var(--cc,var(--solar))}
-#selList{position:absolute;right:calc(26px + env(safe-area-inset-right,0px));top:calc(64px + env(safe-area-inset-top,0px));width:min(430px,44vw);display:grid;gap:8px}
+#selectOv>.selSide{position:absolute;right:calc(26px + env(safe-area-inset-right,0px));top:calc(64px + env(safe-area-inset-top,0px));bottom:calc(58px + env(safe-area-inset-bottom,0px));width:min(430px,44vw);display:flex;flex-direction:column;gap:12px;pointer-events:none}
+.selSide>*{pointer-events:auto}
+#selList{position:relative;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;display:grid;gap:8px;align-content:start}
 .selBan{appearance:none;cursor:pointer;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;padding:12px 16px 12px 12px;text-align:left;color:var(--ink);border:1px solid var(--line);background:rgba(8,10,18,.72);font-family:var(--body);clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,0 100%);transition:background .2s,border-color .2s,padding .2s}
 .selBan:hover{border-color:var(--cc)}
 .selBan[aria-pressed="true"]{padding-top:20px;padding-bottom:20px;border-color:var(--cc);background:linear-gradient(90deg,color-mix(in srgb,var(--cc) 34%,transparent),rgba(8,10,18,.82) 70%);box-shadow:inset 4px 0 0 var(--cc)}
@@ -437,7 +439,7 @@ body.social #tTalk.on{display:flex}
 .selPow{display:grid;justify-items:end;font:700 26px/1 var(--display);color:var(--crit);letter-spacing:.04em}
 .selPow i{font-style:normal;font-size:13px;margin-right:4px;vertical-align:4px}
 .selPow small{font:600 10px/1 var(--display);letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-top:4px}
-.selCard{position:absolute;right:calc(26px + env(safe-area-inset-right,0px));bottom:calc(58px + env(safe-area-inset-bottom,0px));width:min(430px,44vw);display:grid;gap:10px;padding:14px 16px;background:rgba(8,10,18,.82);border:1px solid var(--line);border-top:3px solid var(--cc,var(--ink))}
+.selCard{flex:none;margin-top:auto;display:grid;gap:10px;padding:14px 16px;background:rgba(8,10,18,.82);border:1px solid var(--line);border-top:3px solid var(--cc,var(--ink))}
 .selCardTop{font:700 13px/1 var(--display);letter-spacing:.3em;text-transform:uppercase;color:var(--dim)}
 .selCard p{margin:0;color:var(--ink);opacity:.82;font-size:13.5px;line-height:1.5}
 .selCardBtns{display:flex;gap:10px;align-items:center}
@@ -601,16 +603,27 @@ body.social #tTalk.on{display:flex}
 #tClass.cd{opacity:.45}
 body.social #tClass,body.flying #tClass{display:none}
 
+/* shorter screens: slimmer class banners, with the power diamond beside the number instead of above it */
+@media (max-height:650px){
+  .selBan{padding-top:8px;padding-bottom:8px}
+  .selBan[aria-pressed="true"]{padding-top:14px;padding-bottom:14px}
+  .selBan .selPow{grid-template-columns:auto auto;align-items:start}
+  .selBan .selPow i{margin:2px 3px 0 0}
+  .selBan .selPow small{grid-column:1 / -1}
+}
 @media (max-height:520px){
   .selHead{top:calc(10px + env(safe-area-inset-top,0px));gap:3px}
   .selName{font-size:28px}
-  #selList{top:calc(12px + env(safe-area-inset-top,0px));gap:5px;width:min(400px,50vw)}
-  .selBan{padding:6px 12px 6px 8px;gap:10px}
-  .selBan[aria-pressed="true"]{padding-top:10px;padding-bottom:10px}
+  #selectOv>.selSide{top:calc(12px + env(safe-area-inset-top,0px));bottom:calc(40px + env(safe-area-inset-bottom,0px));width:min(400px,50vw);gap:8px}
+  #selList{gap:5px}
+  .selBan{padding:5px 12px 5px 8px;gap:10px}
+  .selBan[aria-pressed="true"]{padding-top:9px;padding-bottom:9px}
+  .selTxt{gap:3px}
+  .selBan .selPow i{font-size:10px;margin-top:1px}
   .selGlyph{width:32px;height:32px}
   .selTxt b{font-size:18px}
   .selPow{font-size:20px}
-  .selCard{bottom:calc(40px + env(safe-area-inset-bottom,0px));width:min(400px,50vw);padding:8px 12px;gap:6px}
+  .selCard{padding:8px 12px;gap:6px}
   .selCard p{font-size:12px;line-height:1.35}
   .selCardTop{display:none}
   .hintbar{padding-top:4px;padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))}
@@ -645,7 +658,7 @@ body.social #tClass,body.flying #tClass{display:none}
   .hexRow{bottom:-56px;gap:4px}.hexIc{width:40px;height:46px}.hexIc svg{width:20px;height:20px}.hexL{font-size:8px}
 }
 @media (max-width:720px){
-  #selList,.selCard{width:min(430px,calc(100% - 40px))}
+  #selectOv>.selSide{width:min(430px,calc(100% - 40px))}
   .subBody{grid-template-columns:1fr}.subInfo{display:none}
   .subStats{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
@@ -857,11 +870,13 @@ body.social #tClass,body.flying #tClass{display:none}
     <b class="selName">Driftwalker</b>
     <div class="selClan">Fireteam // Emberhold</div>
   </div>
-  <div id="selList"></div>
-  <div class="selCard" id="selCard">
-    <div class="selCardTop">Select character</div>
-    <p id="selBlurb"></p>
-    <div class="selCardBtns"><button class="btn" id="selGo" type="button">Log in</button><button class="btn ghost small" id="selReset" type="button">Reset</button></div>
+  <div class="selSide">
+    <div id="selList"></div>
+    <div class="selCard" id="selCard">
+      <div class="selCardTop">Select character</div>
+      <p id="selBlurb"></p>
+      <div class="selCardBtns"><button class="btn" id="selGo" type="button">Log in</button><button class="btn ghost small" id="selReset" type="button">Reset</button></div>
+    </div>
   </div>
   <div class="hintbar"><button class="hint" id="selBack" type="button"><kbd>Esc</kbd>Title screen</button></div>
 </div>
@@ -3095,7 +3110,11 @@ const CLASSES = {
   bulwark: { n: 'Bulwark', lineage: 'Emberborn', css: '#ff8a6a', c: 0xff8a6a,
     blurb: 'Shield-bearers who hold the line so the rest can push.',
     ability: { id: 'wall', n: 'Bastion Wall', d: 'Raise a barrier in front of you that stops enemy fire for 8 s.', cd: 26, use: bastionWall },
-    jump: { id: 'lift', n: 'Thrust Lift', d: 'Jump again in the air for a long powered lift.' } }
+    jump: { id: 'lift', n: 'Thrust Lift', d: 'Jump again in the air for a long powered lift.' } },
+  screeb: { n: 'Screeb', lineage: 'Screebling', css: '#adffff', c: 0xff69b4,
+    blurb: 'Guardians with the heart of a Screeb.',
+    ability: { id: 'suicide', n: 'Screeb Explosion', d: 'Detonate yourself to take half of your current health and cause a nuclear explosion.', cd: 50, use: screebExplosion },
+    jump: { id: 'triple', n: 'Triple Leap', d: 'Jump twice more in the air.' } }
 };
 const CLASS_IDS = ['seer', 'outrider', 'bulwark', 'screeb'];
 const SUBCLASSES = {
@@ -4673,7 +4692,7 @@ function openSelect(){
   studioMode('select'); show('selectOv', true); renderSelect();
 }
 function renderSelect(){
-  const list = $('selList'); list.innerHTML = '';
+  const list = $('selList'), top = list.scrollTop; list.innerHTML = '';
   CLASS_IDS.forEach((c, i) => {
     const C = CLASSES[c], P = peekChar(c), b = el('button', 'selBan'); b.type = 'button';
     b.style.setProperty('--cc', C.css);
@@ -4685,6 +4704,8 @@ function renderSelect(){
     b.addEventListener('click', () => { if (selCur === c) return logIn(); pickSel(c); });
     list.append(b);
   });
+  // when there are more classes than fit on the screen the list scrolls: keep its place, and keep the picked class in view
+  list.scrollTop = top; list.querySelector('[aria-pressed="true"]').scrollIntoView({ block: 'nearest' });
   const C = CLASSES[selCur];
   $('selBlurb').textContent = C.blurb + ' Class ability: ' + C.ability.n + '. Jump: ' + C.jump.n + '.';
   $('selReset').textContent = selArmed ? 'Tap again to erase' : 'Reset';
@@ -6067,7 +6088,7 @@ addEventListener('keydown', e => {
   }
   if (state === 'select') {
     if (e.code === 'ArrowDown' || e.code === 'KeyS') pickSel(CLASS_IDS[(CLASS_IDS.indexOf(selCur) + 1) % CLASS_IDS.length]);
-    else if (e.code === 'ArrowUp' || e.code === 'KeyW') pickSel(CLASS_IDS[(CLASS_IDS.indexOf(selCur) + 2) % CLASS_IDS.length]);
+    else if (e.code === 'ArrowUp' || e.code === 'KeyW') pickSel(CLASS_IDS[(CLASS_IDS.indexOf(selCur) + CLASS_IDS.length - 1) % CLASS_IDS.length]);
     else if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); logIn(); }
     else if (e.code === 'Escape') backToTitle();
     return;
@@ -6403,7 +6424,7 @@ function pollPad(dt){
   if (state === 'menu' && tap('jump')) startGame();
   else if (state === 'select') {
     const ny = (g.buttons[13] && g.buttons[13].pressed ? 1 : 0) - (g.buttons[12] && g.buttons[12].pressed ? 1 : 0) || Math.round(stick(axisVal(g, binds.moveY.i) * binds.moveY.s));
-    if (ny && ny !== pad.nav) pickSel(CLASS_IDS[(CLASS_IDS.indexOf(selCur) + ny + 3) % 3]);
+    if (ny && ny !== pad.nav) pickSel(CLASS_IDS[(CLASS_IDS.indexOf(selCur) + ny + CLASS_IDS.length) % CLASS_IDS.length]);
     pad.nav = ny;
     if (tap('jump')) logIn(); else if (tap('slide')) backToTitle();
   }
