@@ -3710,7 +3710,7 @@ function screebExplosion(){
   const at = player.pos.clone().setY(0.5);
   player.hp *= 0.5; player.lastHurt = time;                      // half your health, and healing waits as if you were hit
   $('vignette').style.opacity = 0.9; sfx.hurt();
-  blast(at, 15, 500 * abilityMult(), 0xff69b4, { kind: 'class' }, false);   // 500 damage at the centre, 250 at 15 m
+  blast(at, 15, 720 * abilityMult(), 0xff69b4, { kind: 'class' }, false);   // 500 damage at the centre, 250 at 15 m
   boomFx(at.clone().setY(3), 14, 0xff69b4);                       // a second, taller fireball
   const ring = new THREE.Mesh(ringGeo, glowMat(0xff69b4).clone()); ring.rotation.x = Math.PI / 2; ring.position.copy(at).setY(0.2);
   addFx(ring, 0.9, (o, k) => { o.scale.setScalar(1 + k * 30); o.material.opacity = 1 - k; });   // a shockwave racing out to 30 m
