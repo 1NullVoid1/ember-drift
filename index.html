@@ -3011,6 +3011,7 @@ const GLYPH = {
   bulwark: '<path d="M50 6 L88 20 L84 58 Q78 82 50 96 Q22 82 16 58 L12 20Z" fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="round"/><path d="M50 24 Q66 44 57 60 Q67 55 65 44 Q76 63 50 80 Q28 67 37 48 Q40 57 46 59 Q37 42 50 24Z" fill="currentColor"/>',
   solar: '<path d="M50 10 Q74 40 68 62 Q63 84 50 88 Q37 84 32 62 Q26 40 50 10Z" fill="currentColor"/><path d="M50 48 Q59 61 55 72 Q50 77 45 72 Q41 61 50 48Z" fill="#000" opacity=".35"/>',
   arc: '<path d="M60 4 L24 54 L46 54 L36 96 L76 40 L54 40 L66 4Z" fill="currentColor"/>',
+  screeb: '<path d="M50 4 L58 30 L84 16 L70 42 L96 50 L70 58 L84 84 L58 70 L50 96 L42 70 L16 84 L30 58 L4 50 L30 42 L16 16 L42 30Z" fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/><circle cx="50" cy="50" r="13" fill="currentColor"/>',
   void: '<circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="10"/><circle cx="50" cy="50" r="10" fill="currentColor"/>',
   kinetic: '<path d="M50 10 L88 50 L50 90 L12 50Z" fill="none" stroke="currentColor" stroke-width="8"/>'
 };
@@ -3025,6 +3026,7 @@ const AICON = {
   glide: '<path d="M10 46 Q50 18 90 46 L50 38Z" fill="currentColor"/><path d="M50 50 V86 M38 74 L50 86 L62 74" fill="none" stroke="currentColor" stroke-width="7"/>',
   triple: '<path d="M22 92 L50 66 L78 92 M22 66 L50 40 L78 66 M22 40 L50 14 L78 40" fill="none" stroke="currentColor" stroke-width="8"/>',
   lift: '<path d="M50 8 L80 44 H62 V90 H38 V44 H20Z" fill="currentColor"/>',
+  suicide: '<circle cx="50" cy="58" r="28" fill="currentColor"/><path d="M50 30 V16 M50 4 V8 M36 10 L31 4 M64 10 L69 4" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"/>',
   aspect: '<path d="M50 4 L94 50 L50 96 L6 50Z" fill="none" stroke="currentColor" stroke-width="6"/><path d="M50 26 L74 50 L50 74 L26 50Z" fill="currentColor"/>',
   shard: '<path d="M50 6 L80 30 L70 90 L30 90 L20 30Z" fill="none" stroke="currentColor" stroke-width="7"/><path d="M50 6 L50 90 M20 30 L80 30" stroke="currentColor" stroke-width="4" opacity=".7"/>'
 };
@@ -3095,7 +3097,7 @@ const CLASSES = {
     ability: { id: 'wall', n: 'Bastion Wall', d: 'Raise a barrier in front of you that stops enemy fire for 8 s.', cd: 26, use: bastionWall },
     jump: { id: 'lift', n: 'Thrust Lift', d: 'Jump again in the air for a long powered lift.' } }
 };
-const CLASS_IDS = ['seer', 'outrider', 'bulwark'];
+const CLASS_IDS = ['seer', 'outrider', 'bulwark', 'screeb'];
 const SUBCLASSES = {
   cinder: {
     n: 'Cinder', element: 'solar', flavor: 'Solar. Fire, burns and big explosions.',
@@ -3201,9 +3203,9 @@ const curClass = () => CLASSES[inv.cls] || CLASSES.outrider;
 const SAVE_KEY = 'emberdrift.save.v1';
 // each class is its own character with its own save; the Outrider keeps the original save so nothing is lost
 const CHAR_KEY = 'emberdrift.char';
-const STARTER_SUB = { seer: 'tempest', outrider: 'cinder', bulwark: 'cinder' };
+const STARTER_SUB = { seer: 'tempest', outrider: 'cinder', bulwark: 'cinder', screeb: 'tempest' };
 let curChar = 'outrider';
-try { const c = localStorage.getItem(CHAR_KEY); if (c === 'seer' || c === 'outrider' || c === 'bulwark') curChar = c; } catch (e) {}
+try { const c = localStorage.getItem(CHAR_KEY); if (c === 'seer' || c === 'outrider' || c === 'bulwark' || c === 'screeb' ) curChar = c; } catch (e) {}
 function charSaveKey(c){ return c === 'outrider' ? SAVE_KEY : SAVE_KEY + '.' + c; }
 const SLOT_CAP = 10;            // unequipped items kept per slot on the character
 const VAULT_CAP = 300;          // items kept in the vault
@@ -3683,6 +3685,17 @@ function bastionWall(){
     for (const c of cols) { const i = colliders.indexOf(c); if (i >= 0) colliders.splice(i, 1); }
     const k = solidMeshes.indexOf(m); if (k >= 0) solidMeshes.splice(k, 1);
   } });
+}
+// Screeb: lose half your current health and set off a huge explosion around you
+function screebExplosion(){
+  const at = player.pos.clone().setY(0.5);
+  player.hp *= 0.5; player.lastHurt = time;                      // half your health, and healing waits as if you were hit
+  $('vignette').style.opacity = 0.9; sfx.hurt();
+  blast(at, 15, 500 * abilityMult(), 0xff69b4, { kind: 'class' }, false);   // 500 damage at the centre, 250 at 15 m
+  boomFx(at.clone().setY(3), 14, 0xff69b4);                       // a second, taller fireball
+  const ring = new THREE.Mesh(ringGeo, glowMat(0xff69b4).clone()); ring.rotation.x = Math.PI / 2; ring.position.copy(at).setY(0.2);
+  addFx(ring, 0.9, (o, k) => { o.scale.setScalar(1 + k * 30); o.material.opacity = 1 - k; });   // a shockwave racing out to 30 m
+  shake = 1.4; fovPunch = 1;
 }
 function superSunspear(){
   const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
@@ -6053,8 +6066,8 @@ addEventListener('keydown', e => {
     return;
   }
   if (state === 'select') {
-    if (e.code === 'ArrowDown' || e.code === 'KeyS') pickSel(CLASS_IDS[(CLASS_IDS.indexOf(selCur) + 1) % 3]);
-    else if (e.code === 'ArrowUp' || e.code === 'KeyW') pickSel(CLASS_IDS[(CLASS_IDS.indexOf(selCur) + 2) % 3]);
+    if (e.code === 'ArrowDown' || e.code === 'KeyS') pickSel(CLASS_IDS[(CLASS_IDS.indexOf(selCur) + 1) % CLASS_IDS.length]);
+    else if (e.code === 'ArrowUp' || e.code === 'KeyW') pickSel(CLASS_IDS[(CLASS_IDS.indexOf(selCur) + 2) % CLASS_IDS.length]);
     else if (e.code === 'Enter' || e.code === 'Space') { e.preventDefault(); logIn(); }
     else if (e.code === 'Escape') backToTitle();
     return;
